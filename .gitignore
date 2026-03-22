@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+log.md
+# Virtual environments
+.venv
+
+# Scratch and notebook cache files
+.cache/
+notebooks/.ipynb_checkpoints/
+*.executed.ipynb
+*.clean.ipynb

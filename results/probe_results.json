@@ -1,0 +1,1457 @@
+{
+  "generated_at": "2026-03-22T18:55:02.431566+00:00",
+  "config": {
+    "dataset": {
+      "raw_dir": "data/raw",
+      "output_dir": "data/spans",
+      "domains": [
+        "nlp",
+        "cv"
+      ],
+      "seed": 13,
+      "balance": true,
+      "intro_lead_paragraphs": 2,
+      "domain_inference": {
+        "nlp_title_keywords": [
+          "language",
+          "text",
+          "dialog",
+          "summarization",
+          "translation",
+          "paraphrase",
+          "retrieval",
+          "question answering",
+          "named entity",
+          "coreference",
+          "parser",
+          "parse",
+          "speech",
+          "corpus",
+          "discourse",
+          "morphology",
+          "token",
+          "sentiment",
+          "stance",
+          "semantic role",
+          "event extraction",
+          "text classification",
+          "natural language"
+        ],
+        "nlp_venue_keywords": [
+          "association for computational linguistics",
+          "acl",
+          "emnlp",
+          "naacl",
+          "eacl",
+          "coling",
+          "conll",
+          "sigdial",
+          "ijcnlp",
+          "lrec",
+          "inlg",
+          "tacl",
+          "wassa",
+          "bea",
+          "nlpxml",
+          "argmining",
+          "bucc",
+          "iwp",
+          "hlt-naacl"
+        ],
+        "cv_title_keywords": [
+          "vision",
+          "visual",
+          "image",
+          "images",
+          "video",
+          "scene",
+          "object detection",
+          "segmentation",
+          "pose",
+          "3d",
+          "point cloud",
+          "reconstruction",
+          "tracking",
+          "face",
+          "hand",
+          "camera",
+          "render",
+          "optical flow",
+          "depth",
+          "stereo"
+        ],
+        "cv_venue_keywords": [
+          "cvpr",
+          "iccv",
+          "eccv",
+          "bmvc",
+          "wacv",
+          "3dv",
+          "ieee/cvf"
+        ],
+        "nlp_bonus_keywords": [
+          "linguistics"
+        ],
+        "cv_bonus_keywords": [
+          "computer vision"
+        ],
+        "venue_weight": 3,
+        "title_weight": 2,
+        "bonus_weight": 1
+      },
+      "section_rules": {
+        "spurious_section_prefixes": [
+          "figure",
+          "table",
+          "reference",
+          "references",
+          "bibliography",
+          "appendix",
+          "acknowledg"
+        ],
+        "intro_keywords": [
+          "introduction",
+          "intro"
+        ],
+        "conclusion_keywords": [
+          "conclusion",
+          "conclusions",
+          "closing remarks"
+        ],
+        "micro_section_keywords": [
+          "method",
+          "methodology",
+          "experiment",
+          "experimental",
+          "evaluation",
+          "setup",
+          "implementation",
+          "training",
+          "model",
+          "result",
+          "performance",
+          "testing",
+          "benchmark",
+          "comparison",
+          "criteria",
+          "analysis",
+          "ablation",
+          "study"
+        ]
+      }
+    },
+    "embedding": {
+      "model_name": [
+        "allenai/scibert_scivocab_uncased",
+        "BAAI/bge-small-en-v1.5"
+      ],
+      "pooling": "mean",
+      "max_tokens": 80,
+      "seed": 13,
+      "output_dir": "embeddings",
+      "cache_dir": ".cache/hf"
+    },
+    "pipeline": {
+      "batch_size": 16,
+      "control_strategy": "sample"
+    },
+    "probe": {
+      "seed": 13,
+      "token_length": 80,
+      "train_fraction": 0.8,
+      "learning_rate": 0.05,
+      "num_steps": 400,
+      "weight_decay": 0.0001,
+      "results_dir": "results"
+    }
+  },
+  "embeddings_dir": "/Users/shang/Development/slod-probe/embeddings",
+  "results_dir": "/Users/shang/Development/slod-probe/results",
+  "condition": "all",
+  "runs": [
+    {
+      "model_name": "allenai/scibert_scivocab_uncased",
+      "model_slug": "allenai_scibert_scivocab_uncased",
+      "condition": "in_domain",
+      "train_domain": "nlp",
+      "test_domain": "nlp",
+      "controlled": false,
+      "control_strategy": null,
+      "token_length": null,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.6121115168733146,
+        "accuracy": 0.6132686084142395,
+        "per_class": {
+          "macro": {
+            "precision": 0.6666666666666666,
+            "recall": 0.6538461538461539,
+            "f1": 0.6601941747572816,
+            "support": 208
+          },
+          "meso": {
+            "precision": 0.5297029702970297,
+            "recall": 0.6114285714285714,
+            "f1": 0.5676392572944298,
+            "support": 175
+          },
+          "micro": {
+            "precision": 0.6415094339622641,
+            "recall": 0.5787234042553191,
+            "f1": 0.6085011185682326,
+            "support": 235
+          }
+        },
+        "confusion_matrix": [
+          [
+            136,
+            36,
+            36
+          ],
+          [
+            28,
+            107,
+            40
+          ],
+          [
+            40,
+            59,
+            136
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.1471206389239176,
+        "accuracy": 0.28317152103559873,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 208
+          },
+          "meso": {
+            "precision": 0.28317152103559873,
+            "recall": 1.0,
+            "f1": 0.44136191677175285,
+            "support": 175
+          },
+          "micro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 235
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            208,
+            0
+          ],
+          [
+            0,
+            175,
+            0
+          ],
+          [
+            0,
+            235,
+            0
+          ]
+        ]
+      },
+      "train_size": 2187,
+      "test_size": 618,
+      "train_papers": 122,
+      "test_papers": 31,
+      "train_label_counts": {
+        "macro": 727,
+        "meso": 760,
+        "micro": 700
+      },
+      "test_label_counts": {
+        "macro": 208,
+        "meso": 175,
+        "micro": 235
+      }
+    },
+    {
+      "model_name": "allenai/scibert_scivocab_uncased",
+      "model_slug": "allenai_scibert_scivocab_uncased",
+      "condition": "in_domain",
+      "train_domain": "cv",
+      "test_domain": "cv",
+      "controlled": false,
+      "control_strategy": null,
+      "token_length": null,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.6562917052948656,
+        "accuracy": 0.657672849915683,
+        "per_class": {
+          "macro": {
+            "precision": 0.7578947368421053,
+            "recall": 0.6889952153110048,
+            "f1": 0.7218045112781954,
+            "support": 209
+          },
+          "meso": {
+            "precision": 0.6255707762557078,
+            "recall": 0.6618357487922706,
+            "f1": 0.6431924882629109,
+            "support": 207
+          },
+          "micro": {
+            "precision": 0.592391304347826,
+            "recall": 0.615819209039548,
+            "f1": 0.6038781163434902,
+            "support": 177
+          }
+        },
+        "confusion_matrix": [
+          [
+            144,
+            33,
+            32
+          ],
+          [
+            27,
+            137,
+            43
+          ],
+          [
+            19,
+            49,
+            109
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.15324675324675327,
+        "accuracy": 0.2984822934232715,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 209
+          },
+          "meso": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 207
+          },
+          "micro": {
+            "precision": 0.2984822934232715,
+            "recall": 1.0,
+            "f1": 0.4597402597402598,
+            "support": 177
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            209
+          ],
+          [
+            0,
+            0,
+            207
+          ],
+          [
+            0,
+            0,
+            177
+          ]
+        ]
+      },
+      "train_size": 2653,
+      "test_size": 593,
+      "train_papers": 122,
+      "test_papers": 31,
+      "train_label_counts": {
+        "macro": 873,
+        "meso": 875,
+        "micro": 905
+      },
+      "test_label_counts": {
+        "macro": 209,
+        "meso": 207,
+        "micro": 177
+      }
+    },
+    {
+      "model_name": "allenai/scibert_scivocab_uncased",
+      "model_slug": "allenai_scibert_scivocab_uncased",
+      "condition": "cross_domain",
+      "train_domain": "nlp",
+      "test_domain": "cv",
+      "controlled": false,
+      "control_strategy": null,
+      "token_length": null,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.5999564046303784,
+        "accuracy": 0.5979667282809612,
+        "per_class": {
+          "macro": {
+            "precision": 0.7256908904810645,
+            "recall": 0.655268022181146,
+            "f1": 0.6886838271005343,
+            "support": 1082
+          },
+          "meso": {
+            "precision": 0.56640625,
+            "recall": 0.5360443622920518,
+            "f1": 0.5508072174738841,
+            "support": 1082
+          },
+          "micro": {
+            "precision": 0.5236947791164659,
+            "recall": 0.6025878003696857,
+            "f1": 0.5603781693167167,
+            "support": 1082
+          }
+        },
+        "confusion_matrix": [
+          [
+            709,
+            133,
+            240
+          ],
+          [
+            149,
+            580,
+            353
+          ],
+          [
+            119,
+            311,
+            652
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.16666666666666666,
+        "accuracy": 0.3333333333333333,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1082
+          },
+          "meso": {
+            "precision": 0.3333333333333333,
+            "recall": 1.0,
+            "f1": 0.5,
+            "support": 1082
+          },
+          "micro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1082
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            1082,
+            0
+          ],
+          [
+            0,
+            1082,
+            0
+          ],
+          [
+            0,
+            1082,
+            0
+          ]
+        ]
+      },
+      "train_size": 2187,
+      "test_size": 3246,
+      "train_papers": 122,
+      "test_papers": 153,
+      "train_label_counts": {
+        "macro": 727,
+        "meso": 760,
+        "micro": 700
+      },
+      "test_label_counts": {
+        "macro": 1082,
+        "meso": 1082,
+        "micro": 1082
+      }
+    },
+    {
+      "model_name": "allenai/scibert_scivocab_uncased",
+      "model_slug": "allenai_scibert_scivocab_uncased",
+      "condition": "cross_domain",
+      "train_domain": "cv",
+      "test_domain": "nlp",
+      "controlled": false,
+      "control_strategy": null,
+      "token_length": null,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.582360065756922,
+        "accuracy": 0.582174688057041,
+        "per_class": {
+          "macro": {
+            "precision": 0.6842672413793104,
+            "recall": 0.679144385026738,
+            "f1": 0.6816961889425658,
+            "support": 935
+          },
+          "meso": {
+            "precision": 0.5287846481876333,
+            "recall": 0.5304812834224599,
+            "f1": 0.5296316070475173,
+            "support": 935
+          },
+          "micro": {
+            "precision": 0.5346112886048988,
+            "recall": 0.5368983957219251,
+            "f1": 0.535752401280683,
+            "support": 935
+          }
+        },
+        "confusion_matrix": [
+          [
+            635,
+            163,
+            137
+          ],
+          [
+            139,
+            496,
+            300
+          ],
+          [
+            154,
+            279,
+            502
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.16666666666666666,
+        "accuracy": 0.3333333333333333,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 935
+          },
+          "meso": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 935
+          },
+          "micro": {
+            "precision": 0.3333333333333333,
+            "recall": 1.0,
+            "f1": 0.5,
+            "support": 935
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            935
+          ],
+          [
+            0,
+            0,
+            935
+          ],
+          [
+            0,
+            0,
+            935
+          ]
+        ]
+      },
+      "train_size": 2653,
+      "test_size": 2805,
+      "train_papers": 122,
+      "test_papers": 153,
+      "train_label_counts": {
+        "macro": 873,
+        "meso": 875,
+        "micro": 905
+      },
+      "test_label_counts": {
+        "macro": 935,
+        "meso": 935,
+        "micro": 935
+      }
+    },
+    {
+      "model_name": "allenai/scibert_scivocab_uncased",
+      "model_slug": "allenai_scibert_scivocab_uncased",
+      "condition": "controlled",
+      "train_domain": "nlp",
+      "test_domain": "nlp",
+      "controlled": true,
+      "control_strategy": "sample",
+      "token_length": 80,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.6007832642401731,
+        "accuracy": 0.6019417475728155,
+        "per_class": {
+          "macro": {
+            "precision": 0.6958762886597938,
+            "recall": 0.6490384615384616,
+            "f1": 0.6716417910447762,
+            "support": 208
+          },
+          "meso": {
+            "precision": 0.5076142131979695,
+            "recall": 0.5714285714285714,
+            "f1": 0.5376344086021505,
+            "support": 175
+          },
+          "micro": {
+            "precision": 0.6035242290748899,
+            "recall": 0.5829787234042553,
+            "f1": 0.593073593073593,
+            "support": 235
+          }
+        },
+        "confusion_matrix": [
+          [
+            135,
+            32,
+            41
+          ],
+          [
+            26,
+            100,
+            49
+          ],
+          [
+            33,
+            65,
+            137
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.1471206389239176,
+        "accuracy": 0.28317152103559873,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 208
+          },
+          "meso": {
+            "precision": 0.28317152103559873,
+            "recall": 1.0,
+            "f1": 0.44136191677175285,
+            "support": 175
+          },
+          "micro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 235
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            208,
+            0
+          ],
+          [
+            0,
+            175,
+            0
+          ],
+          [
+            0,
+            235,
+            0
+          ]
+        ]
+      },
+      "train_size": 2187,
+      "test_size": 618,
+      "train_papers": 122,
+      "test_papers": 31,
+      "train_label_counts": {
+        "macro": 727,
+        "meso": 760,
+        "micro": 700
+      },
+      "test_label_counts": {
+        "macro": 208,
+        "meso": 175,
+        "micro": 235
+      }
+    },
+    {
+      "model_name": "allenai/scibert_scivocab_uncased",
+      "model_slug": "allenai_scibert_scivocab_uncased",
+      "condition": "controlled",
+      "train_domain": "cv",
+      "test_domain": "cv",
+      "controlled": true,
+      "control_strategy": "sample",
+      "token_length": 80,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.597186518137675,
+        "accuracy": 0.596964586846543,
+        "per_class": {
+          "macro": {
+            "precision": 0.7222222222222222,
+            "recall": 0.6220095693779905,
+            "f1": 0.6683804627249357,
+            "support": 209
+          },
+          "meso": {
+            "precision": 0.5920398009950248,
+            "recall": 0.5748792270531401,
+            "f1": 0.5833333333333334,
+            "support": 207
+          },
+          "micro": {
+            "precision": 0.49528301886792453,
+            "recall": 0.5932203389830508,
+            "f1": 0.5398457583547558,
+            "support": 177
+          }
+        },
+        "confusion_matrix": [
+          [
+            130,
+            35,
+            44
+          ],
+          [
+            25,
+            119,
+            63
+          ],
+          [
+            25,
+            47,
+            105
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.15324675324675327,
+        "accuracy": 0.2984822934232715,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 209
+          },
+          "meso": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 207
+          },
+          "micro": {
+            "precision": 0.2984822934232715,
+            "recall": 1.0,
+            "f1": 0.4597402597402598,
+            "support": 177
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            209
+          ],
+          [
+            0,
+            0,
+            207
+          ],
+          [
+            0,
+            0,
+            177
+          ]
+        ]
+      },
+      "train_size": 2653,
+      "test_size": 593,
+      "train_papers": 122,
+      "test_papers": 31,
+      "train_label_counts": {
+        "macro": 873,
+        "meso": 875,
+        "micro": 905
+      },
+      "test_label_counts": {
+        "macro": 209,
+        "meso": 207,
+        "micro": 177
+      }
+    },
+    {
+      "model_name": "BAAI/bge-small-en-v1.5",
+      "model_slug": "baai_bge_small_en_v1_5",
+      "condition": "in_domain",
+      "train_domain": "nlp",
+      "test_domain": "nlp",
+      "controlled": false,
+      "control_strategy": null,
+      "token_length": null,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.5887590979713386,
+        "accuracy": 0.5906148867313916,
+        "per_class": {
+          "macro": {
+            "precision": 0.66,
+            "recall": 0.6346153846153846,
+            "f1": 0.6470588235294118,
+            "support": 208
+          },
+          "meso": {
+            "precision": 0.47596153846153844,
+            "recall": 0.5657142857142857,
+            "f1": 0.5169712793733682,
+            "support": 175
+          },
+          "micro": {
+            "precision": 0.638095238095238,
+            "recall": 0.5702127659574469,
+            "f1": 0.6022471910112359,
+            "support": 235
+          }
+        },
+        "confusion_matrix": [
+          [
+            132,
+            43,
+            33
+          ],
+          [
+            33,
+            99,
+            43
+          ],
+          [
+            35,
+            66,
+            134
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.1471206389239176,
+        "accuracy": 0.28317152103559873,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 208
+          },
+          "meso": {
+            "precision": 0.28317152103559873,
+            "recall": 1.0,
+            "f1": 0.44136191677175285,
+            "support": 175
+          },
+          "micro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 235
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            208,
+            0
+          ],
+          [
+            0,
+            175,
+            0
+          ],
+          [
+            0,
+            235,
+            0
+          ]
+        ]
+      },
+      "train_size": 2187,
+      "test_size": 618,
+      "train_papers": 122,
+      "test_papers": 31,
+      "train_label_counts": {
+        "macro": 727,
+        "meso": 760,
+        "micro": 700
+      },
+      "test_label_counts": {
+        "macro": 208,
+        "meso": 175,
+        "micro": 235
+      }
+    },
+    {
+      "model_name": "BAAI/bge-small-en-v1.5",
+      "model_slug": "baai_bge_small_en_v1_5",
+      "condition": "in_domain",
+      "train_domain": "cv",
+      "test_domain": "cv",
+      "controlled": false,
+      "control_strategy": null,
+      "token_length": null,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.5818766982453556,
+        "accuracy": 0.5851602023608768,
+        "per_class": {
+          "macro": {
+            "precision": 0.6602870813397129,
+            "recall": 0.6602870813397129,
+            "f1": 0.6602870813397129,
+            "support": 209
+          },
+          "meso": {
+            "precision": 0.5742574257425742,
+            "recall": 0.5603864734299517,
+            "f1": 0.567237163814181,
+            "support": 207
+          },
+          "micro": {
+            "precision": 0.510989010989011,
+            "recall": 0.5254237288135594,
+            "f1": 0.5181058495821728,
+            "support": 177
+          }
+        },
+        "confusion_matrix": [
+          [
+            138,
+            36,
+            35
+          ],
+          [
+            37,
+            116,
+            54
+          ],
+          [
+            34,
+            50,
+            93
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.15324675324675327,
+        "accuracy": 0.2984822934232715,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 209
+          },
+          "meso": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 207
+          },
+          "micro": {
+            "precision": 0.2984822934232715,
+            "recall": 1.0,
+            "f1": 0.4597402597402598,
+            "support": 177
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            209
+          ],
+          [
+            0,
+            0,
+            207
+          ],
+          [
+            0,
+            0,
+            177
+          ]
+        ]
+      },
+      "train_size": 2653,
+      "test_size": 593,
+      "train_papers": 122,
+      "test_papers": 31,
+      "train_label_counts": {
+        "macro": 873,
+        "meso": 875,
+        "micro": 905
+      },
+      "test_label_counts": {
+        "macro": 209,
+        "meso": 207,
+        "micro": 177
+      }
+    },
+    {
+      "model_name": "BAAI/bge-small-en-v1.5",
+      "model_slug": "baai_bge_small_en_v1_5",
+      "condition": "cross_domain",
+      "train_domain": "nlp",
+      "test_domain": "cv",
+      "controlled": false,
+      "control_strategy": null,
+      "token_length": null,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.5363394949015943,
+        "accuracy": 0.5357362908194702,
+        "per_class": {
+          "macro": {
+            "precision": 0.6096618357487923,
+            "recall": 0.5831792975970426,
+            "f1": 0.5961265942371281,
+            "support": 1082
+          },
+          "meso": {
+            "precision": 0.5114285714285715,
+            "recall": 0.49630314232902034,
+            "f1": 0.5037523452157597,
+            "support": 1082
+          },
+          "micro": {
+            "precision": 0.491817398794143,
+            "recall": 0.5277264325323475,
+            "f1": 0.5091395452518949,
+            "support": 1082
+          }
+        },
+        "confusion_matrix": [
+          [
+            631,
+            176,
+            275
+          ],
+          [
+            230,
+            537,
+            315
+          ],
+          [
+            174,
+            337,
+            571
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.16666666666666666,
+        "accuracy": 0.3333333333333333,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1082
+          },
+          "meso": {
+            "precision": 0.3333333333333333,
+            "recall": 1.0,
+            "f1": 0.5,
+            "support": 1082
+          },
+          "micro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 1082
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            1082,
+            0
+          ],
+          [
+            0,
+            1082,
+            0
+          ],
+          [
+            0,
+            1082,
+            0
+          ]
+        ]
+      },
+      "train_size": 2187,
+      "test_size": 3246,
+      "train_papers": 122,
+      "test_papers": 153,
+      "train_label_counts": {
+        "macro": 727,
+        "meso": 760,
+        "micro": 700
+      },
+      "test_label_counts": {
+        "macro": 1082,
+        "meso": 1082,
+        "micro": 1082
+      }
+    },
+    {
+      "model_name": "BAAI/bge-small-en-v1.5",
+      "model_slug": "baai_bge_small_en_v1_5",
+      "condition": "cross_domain",
+      "train_domain": "cv",
+      "test_domain": "nlp",
+      "controlled": false,
+      "control_strategy": null,
+      "token_length": null,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.5567218141687831,
+        "accuracy": 0.5575757575757576,
+        "per_class": {
+          "macro": {
+            "precision": 0.59979633401222,
+            "recall": 0.6299465240641712,
+            "f1": 0.6145018257694315,
+            "support": 935
+          },
+          "meso": {
+            "precision": 0.5198372329603256,
+            "recall": 0.546524064171123,
+            "f1": 0.5328467153284672,
+            "support": 935
+          },
+          "micro": {
+            "precision": 0.5523809523809524,
+            "recall": 0.49625668449197863,
+            "f1": 0.5228169014084507,
+            "support": 935
+          }
+        },
+        "confusion_matrix": [
+          [
+            589,
+            198,
+            148
+          ],
+          [
+            196,
+            511,
+            228
+          ],
+          [
+            197,
+            274,
+            464
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.16666666666666666,
+        "accuracy": 0.3333333333333333,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 935
+          },
+          "meso": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 935
+          },
+          "micro": {
+            "precision": 0.3333333333333333,
+            "recall": 1.0,
+            "f1": 0.5,
+            "support": 935
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            935
+          ],
+          [
+            0,
+            0,
+            935
+          ],
+          [
+            0,
+            0,
+            935
+          ]
+        ]
+      },
+      "train_size": 2653,
+      "test_size": 2805,
+      "train_papers": 122,
+      "test_papers": 153,
+      "train_label_counts": {
+        "macro": 873,
+        "meso": 875,
+        "micro": 905
+      },
+      "test_label_counts": {
+        "macro": 935,
+        "meso": 935,
+        "micro": 935
+      }
+    },
+    {
+      "model_name": "BAAI/bge-small-en-v1.5",
+      "model_slug": "baai_bge_small_en_v1_5",
+      "condition": "controlled",
+      "train_domain": "nlp",
+      "test_domain": "nlp",
+      "controlled": true,
+      "control_strategy": "sample",
+      "token_length": 80,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.5325632295044164,
+        "accuracy": 0.5355987055016181,
+        "per_class": {
+          "macro": {
+            "precision": 0.5806451612903226,
+            "recall": 0.5192307692307693,
+            "f1": 0.5482233502538072,
+            "support": 208
+          },
+          "meso": {
+            "precision": 0.4433497536945813,
+            "recall": 0.5142857142857142,
+            "f1": 0.47619047619047616,
+            "support": 175
+          },
+          "micro": {
+            "precision": 0.5807860262008734,
+            "recall": 0.5659574468085107,
+            "f1": 0.5732758620689656,
+            "support": 235
+          }
+        },
+        "confusion_matrix": [
+          [
+            108,
+            52,
+            48
+          ],
+          [
+            37,
+            90,
+            48
+          ],
+          [
+            41,
+            61,
+            133
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.1471206389239176,
+        "accuracy": 0.28317152103559873,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 208
+          },
+          "meso": {
+            "precision": 0.28317152103559873,
+            "recall": 1.0,
+            "f1": 0.44136191677175285,
+            "support": 175
+          },
+          "micro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 235
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            208,
+            0
+          ],
+          [
+            0,
+            175,
+            0
+          ],
+          [
+            0,
+            235,
+            0
+          ]
+        ]
+      },
+      "train_size": 2187,
+      "test_size": 618,
+      "train_papers": 122,
+      "test_papers": 31,
+      "train_label_counts": {
+        "macro": 727,
+        "meso": 760,
+        "micro": 700
+      },
+      "test_label_counts": {
+        "macro": 208,
+        "meso": 175,
+        "micro": 235
+      }
+    },
+    {
+      "model_name": "BAAI/bge-small-en-v1.5",
+      "model_slug": "baai_bge_small_en_v1_5",
+      "condition": "controlled",
+      "train_domain": "cv",
+      "test_domain": "cv",
+      "controlled": true,
+      "control_strategy": "sample",
+      "token_length": 80,
+      "seed": 13,
+      "probe": {
+        "macro_f1": 0.5384739608322019,
+        "accuracy": 0.5396290050590219,
+        "per_class": {
+          "macro": {
+            "precision": 0.6010362694300518,
+            "recall": 0.5550239234449761,
+            "f1": 0.5771144278606966,
+            "support": 209
+          },
+          "meso": {
+            "precision": 0.5255813953488372,
+            "recall": 0.5458937198067633,
+            "f1": 0.5355450236966823,
+            "support": 207
+          },
+          "micro": {
+            "precision": 0.4918918918918919,
+            "recall": 0.5141242937853108,
+            "f1": 0.5027624309392266,
+            "support": 177
+          }
+        },
+        "confusion_matrix": [
+          [
+            116,
+            48,
+            45
+          ],
+          [
+            45,
+            113,
+            49
+          ],
+          [
+            32,
+            54,
+            91
+          ]
+        ]
+      },
+      "baseline": {
+        "macro_f1": 0.15324675324675327,
+        "accuracy": 0.2984822934232715,
+        "per_class": {
+          "macro": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 209
+          },
+          "meso": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 207
+          },
+          "micro": {
+            "precision": 0.2984822934232715,
+            "recall": 1.0,
+            "f1": 0.4597402597402598,
+            "support": 177
+          }
+        },
+        "confusion_matrix": [
+          [
+            0,
+            0,
+            209
+          ],
+          [
+            0,
+            0,
+            207
+          ],
+          [
+            0,
+            0,
+            177
+          ]
+        ]
+      },
+      "train_size": 2653,
+      "test_size": 593,
+      "train_papers": 122,
+      "test_papers": 31,
+      "train_label_counts": {
+        "macro": 873,
+        "meso": 875,
+        "micro": 905
+      },
+      "test_label_counts": {
+        "macro": 209,
+        "meso": 207,
+        "micro": 177
+      }
+    }
+  ]
+}

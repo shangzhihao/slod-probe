@@ -1,0 +1,159 @@
+[dataset]
+# Input and output locations for weak-label generation.
+raw_dir = "data/raw"
+output_dir = "data/spans"
+# Target paper domains to keep. Use one or more of: "nlp", "cv".
+domains = ["nlp", "cv"]
+# Random seed used when balancing the per-label span counts.
+seed = 13
+# If true, downsample each label to the smallest label count in a domain.
+balance = true
+# Number of introduction paragraphs to keep as macro spans.
+intro_lead_paragraphs = 2
+
+[dataset.domain_inference]
+# Keyword tables and weights for paper-domain inference.
+nlp_title_keywords = [
+  "language",
+  "text",
+  "dialog",
+  "summarization",
+  "translation",
+  "paraphrase",
+  "retrieval",
+  "question answering",
+  "named entity",
+  "coreference",
+  "parser",
+  "parse",
+  "speech",
+  "corpus",
+  "discourse",
+  "morphology",
+  "token",
+  "sentiment",
+  "stance",
+  "semantic role",
+  "event extraction",
+  "text classification",
+  "natural language",
+]
+nlp_venue_keywords = [
+  "association for computational linguistics",
+  "acl",
+  "emnlp",
+  "naacl",
+  "eacl",
+  "coling",
+  "conll",
+  "sigdial",
+  "ijcnlp",
+  "lrec",
+  "inlg",
+  "tacl",
+  "wassa",
+  "bea",
+  "nlpxml",
+  "argmining",
+  "bucc",
+  "iwp",
+  "hlt-naacl",
+]
+cv_title_keywords = [
+  "vision",
+  "visual",
+  "image",
+  "images",
+  "video",
+  "scene",
+  "object detection",
+  "segmentation",
+  "pose",
+  "3d",
+  "point cloud",
+  "reconstruction",
+  "tracking",
+  "face",
+  "hand",
+  "camera",
+  "render",
+  "optical flow",
+  "depth",
+  "stereo",
+]
+cv_venue_keywords = ["cvpr", "iccv", "eccv", "bmvc", "wacv", "3dv", "ieee/cvf"]
+nlp_bonus_keywords = ["linguistics"]
+cv_bonus_keywords = ["computer vision"]
+venue_weight = 3
+title_weight = 2
+bonus_weight = 1
+
+[dataset.section_rules]
+# Section-name heuristics used during weak-label extraction.
+spurious_section_prefixes = [
+  "figure",
+  "table",
+  "reference",
+  "references",
+  "bibliography",
+  "appendix",
+  "acknowledg",
+]
+intro_keywords = ["introduction", "intro"]
+conclusion_keywords = ["conclusion", "conclusions", "closing remarks"]
+micro_section_keywords = [
+  "method",
+  "methodology",
+  "experiment",
+  "experimental",
+  "evaluation",
+  "setup",
+  "implementation",
+  "training",
+  "model",
+  "result",
+  "performance",
+  "testing",
+  "benchmark",
+  "comparison",
+  "criteria",
+  "analysis",
+  "ablation",
+  "study",
+]
+
+[embedding]
+# Frozen encoder models to run in one pass. Each value becomes one output folder.
+model_name = ["allenai/scibert_scivocab_uncased", "BAAI/bge-small-en-v1.5"]
+# Token pooling strategy. Allowed values: "mean", "cls".
+pooling = "mean"
+# Maximum number of model tokens per span before truncation.
+max_tokens = 80
+# Seed used when writing embedding metadata.
+seed = 13
+# Directory where embedding artifacts are written.
+output_dir = "embeddings"
+# Local Hugging Face cache root for model/tokenizer downloads.
+cache_dir = ".cache/hf"
+
+[pipeline]
+# Batch size for embedding and controlled re-embedding. Larger values are faster but use more memory.
+batch_size = 16
+# How to choose the control window. Allowed values: "truncate", "sample", "middle".
+control_strategy = "sample"
+
+[probe]
+# Random seed for paper splitting and probe initialization.
+seed = 13
+# Fixed token window used for the length-control condition.
+token_length = 80
+# Fraction of papers assigned to the training split. Must be between 0 and 1.
+train_fraction = 0.8
+# Learning rate for the linear probe optimizer.
+learning_rate = 0.05
+# Number of optimizer steps for probe training.
+num_steps = 400
+# AdamW weight decay for the probe.
+weight_decay = 1e-4
+# Directory where probe results and controlled embeddings are written.
+results_dir = "results"

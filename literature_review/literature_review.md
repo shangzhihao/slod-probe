@@ -1,0 +1,43 @@
+# Literature Review for SLoD Detection
+
+## Introduction
+
+The core question of SLoD is whether semantic level details are encoded in frozen language model embeddings. This is a natural setting for probing classifiers, because the research question concerns what can be decoded from fixed representations rather than what can be learned end to end. It is also a setting where probe results are easy to over-interpret. A probe can show that a property is decodable from a representation, but it cannot show that the model encodes that property causally, the property is uniquely represented, or the probe has not exploited a shortcut.
+
+The three papers reviewed here follow the workflow of the SLoD analysis. Belinkov (2022) clarifies what probing classifiers can and cannot establish, Ratner et al. (2017) show how weak supervision can replace manual annotation in training-data construction, and Nickel and Kiela (2017) explain how hierarchical structure can be represented geometrically. Together, they provide the methodological basis for studying SLoD. They also define its main interpretive risks: length and section-position confounds, leakage from document structure, and noisy labels that may reflect paper organization more than semantic abstraction.
+
+## Probing Classifiers and Their Limits
+
+Belinkov (2022) treats probing as an analysis method in which a classifier is trained on hidden representations to predict some linguistic property. The key contribution is a careful argument that probe accuracy is not self-interpreting. High accuracy may indicate that the property is linearly available, that it is recoverable by a sufficiently expressive decoder, or simply that the probe has exploited dataset shortcuts. For this reason, Belinkov emphasizes the need for controls and baselines, including random-label or random-representation baselines, selectivity-style comparisons, and complexity-aware measures such as minimum description length.
+
+This caution applies to SLoD detection. Span length, section position, document structure, and vocabulary overlap may all correlate with the target labels. A probe that separates macro from micro text may therefore be learning superficial regularities rather than abstraction level itself. The paper also makes a more general point: probes answer a limited question. They can show whether information is present and extractable, but they cannot distinguish whether the representation encodes that information explicitly, whether it is entangled with other properties, or whether downstream behavior depends on it. For the SLoD analysis, the strongest claim supported by a successful probe is therefore modest: SLoD-related cues are accessible in frozen embeddings. It would not justify the stronger claim that the model has learned a dedicated internal notion of discourse abstraction.
+
+## Weak Supervision as a Labeling Strategy
+
+Ratner et al. (2017) provide the third piece of the methodological puzzle: weak supervision. Their Snorkel framework shows how heuristic labeling functions can be combined into probabilistic training labels without hand annotation. The central idea is that multiple noisy sources can be modeled jointly, allowing a generative model to estimate their accuracies and correlations and then produce soft labels for a downstream discriminative model. This is highly relevant because the SLoD labels are derived from document structure rather than manual semantic annotation.
+
+In practice, this makes large-scale probing feasible. Weak supervision allows a dataset large enough for analysis without expensive expert labeling. Epistemically, it also fits the task well, because SLoD is itself a structural notion grounded in how authors organize scientific papers. But the same paper also makes clear that weak labels must be treated as noisy observations rather than truth. For SLoD, that means the label-generation scheme must be described explicitly and checked for consistency. If macro spans are mostly titles and abstracts while micro spans are mostly method details, the probe may learn section identity rather than semantic detail. Weak supervision therefore enables the analysis, but it also increases the need for careful error analysis and controlled evaluation.
+
+## Hierarchical Structure in Embeddings
+
+Nickel and Kiela (2017) address a different but related question: how can representations reflect hierarchical structure? Their answer is to move from Euclidean to hyperbolic geometry. The paper argues that many symbolic datasets, especially taxonomies and other tree-like structures, are naturally hierarchical and are therefore more efficiently embedded in spaces with negative curvature. In the Poincaré ball, distance from the origin can encode generality or depth in the hierarchy, while pairwise distance still captures similarity. The paper's main empirical claim is that hyperbolic embeddings represent hierarchical data more compactly and generalize better than Euclidean embeddings when latent hierarchy is present.
+
+For SLoD detection, the relevance of this work is conceptual rather than direct. Scientific papers are not taxonomies, but they do exhibit nested discourse structure: titles, abstracts, introductions, section leads, methods, and detailed results occupy different levels of abstraction. The Poincaré framework suggests that representations can organize such graded structure efficiently when hierarchy is the dominant inductive bias. At the same time, it also marks an important limit. If SLoD is only weakly hierarchical, or if it is entangled with topic, section identity, or document position, then the analogy to hierarchical embedding may be misleading. The paper therefore supports the plausibility of structure in representation space, but it does not guarantee that frozen sentence embeddings will encode SLoD in a clean or monotonic way.
+
+## Methodological Implications for SLoD
+
+Taken together, these papers support a controlled probing study for SLoD detection. Belinkov (2022) frames probe accuracy as evidence of decodability rather than causal understanding, which is the right interpretive stance for frozen embeddings. That matters because the study is not trying to build a better classifier end to end; it is trying to test whether abstraction level can be recovered from fixed representations without overclaiming what the probe means.
+
+Ratner et al. (2017) justify weak supervision when labels must be derived from document structure instead of manual annotation. That fits the SLoD setting because the labels come from section position, paragraph role, and other structural cues rather than expert semantic annotation. The benefit is scale, but the cost is that the labels are inferred, so the generation scheme has to be explicit and the resulting noise has to be acknowledged.
+
+Nickel and Kiela (2017) make it plausible that coarse-grained hierarchy can be represented in vector space, which matters because SLoD is a question about nested levels of discourse granularity. Scientific papers are not taxonomies, but they do organize information across levels such as title, abstract, section lead, and detailed body text. That makes hierarchical structure a reasonable hypothesis for why a frozen embedding might separate macro, meso, and micro spans at all.
+
+## Conclusion
+
+The literature supports the SLoD analysis while also constraining how its results should be interpreted. Probing is an appropriate diagnostic tool, but only if used with controls and modest causal claims. Hyperbolic embedding work provides a useful lens on hierarchy, though not a direct solution for frozen sentence embeddings. Weak supervision offers a principled way to scale labels from document structure, but it shifts the burden onto careful validation. The main risks are straightforward: SLoD-related decodability may reflect length, section position, or vocabulary overlap rather than abstraction level, and the weak labels may mirror formatting conventions or section identity rather than semantic depth. For that reason, a good version of the analysis is not simply whether SLoD-related information is recoverable, but whether it continues to be recoverable under length-matched, cross-domain, and baseline-controlled evaluation. The overall lesson is that the right SLoD study should be simple, controlled, and skeptical of easy wins.
+
+## References
+
+- Belinkov, Y. (2022). *Probing Classifiers: Promises, Shortcomings, and Advances*.
+- Nickel, M., & Kiela, D. (2017). *Poincaré Embeddings for Learning Hierarchical Representations*.
+- Ratner, A., Bach, S. H., Ehrenberg, H., Fries, J., Wu, S., & Ré, C. (2017). *Snorkel: Rapid Training Data Creation with Weak Supervision*.
