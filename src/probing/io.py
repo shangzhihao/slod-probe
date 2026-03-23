@@ -124,6 +124,113 @@ def controlled_artifact_path(results_dir: Path, model_slug: str, domain: str) ->
     return results_dir / "controlled_embeddings" / model_slug / f"{domain}.pt"
 
 
+def _artifact_to_domain_artifact(artifact: dict) -> DomainArtifact:
+    """Convert a serialized artifact payload into the standard container type."""
+    records = [SpanRecord.model_validate(record) for record in artifact["records"]]
+    embeddings = artifact["embeddings"].detach().to(torch.float32).cpu()
+    return DomainArtifact(records=records, embeddings=embeddings)
+
+
+def _load_cached_controlled_artifact(
+    cache_path: Path,
+    *,
+    original: DomainArtifact,
+    settings: SLoDSettings,
+    strategy: LengthControlStrategy,
+) -> DomainArtifact | None:
+    """Load a cached controlled artifact when the cache matches current inputs."""
+    if not cache_path.exists():
+        return None
+
+    artifact = torch.load(cache_path, map_location="cpu", weights_only=False)
+    if not controlled_cache_matches(
+        artifact,
+        original=original,
+        settings=settings,
+        strategy=strategy,
+    ):
+        return None
+    return _artifact_to_domain_artifact(artifact)
+
+
+def _build_controlled_artifact(
+    *,
+    model_name: str,
+    original: DomainArtifact,
+    settings: SLoDSettings,
+    batch_size: int,
+    strategy: LengthControlStrategy,
+) -> DomainArtifact:
+    """Apply length control and re-embed the controlled records."""
+    bundle = load_transformer_bundle(model_name, cache_dir=settings.embedding.cache_dir)
+    controlled_records = control_records(
+        original.records,
+        bundle.tokenizer,
+        # The probe may ask for a shorter view than the encoder supports, but never longer.
+        max_tokens=min(settings.probe.token_length, settings.embedding.max_tokens),
+        seed=settings.probe.seed,
+        strategy=strategy,
+    )
+    embeddings = embed_texts(
+        bundle,
+        [record.text for record in controlled_records],
+        max_tokens=settings.embedding.max_tokens,
+        pooling=settings.embedding.pooling,
+        batch_size=batch_size,
+    )
+    return DomainArtifact(records=controlled_records, embeddings=embeddings)
+
+
+def _controlled_artifact_payload(
+    *,
+    model_name: str,
+    model_slug: str,
+    domain: str,
+    original: DomainArtifact,
+    controlled: DomainArtifact,
+    settings: SLoDSettings,
+    strategy: LengthControlStrategy,
+) -> dict[str, object]:
+    """Build the serialized cache payload for a controlled artifact."""
+    return {
+        "model_name": model_name,
+        "model_slug": model_slug,
+        "domain": domain,
+        "token_length": settings.probe.token_length,
+        "strategy": strategy,
+        "source_signature": controlled_source_signature(original.records),
+        "records": [record.model_dump() for record in controlled.records],
+        "embeddings": controlled.embeddings,
+    }
+
+
+def _save_controlled_artifact(
+    cache_path: Path,
+    *,
+    model_name: str,
+    model_slug: str,
+    domain: str,
+    original: DomainArtifact,
+    controlled: DomainArtifact,
+    settings: SLoDSettings,
+    strategy: LengthControlStrategy,
+) -> None:
+    """Persist a rebuilt controlled artifact to its cache location."""
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        _controlled_artifact_payload(
+            model_name=model_name,
+            model_slug=model_slug,
+            domain=domain,
+            original=original,
+            controlled=controlled,
+            settings=settings,
+            strategy=strategy,
+        ),
+        cache_path,
+    )
+
+
 def load_or_build_controlled_artifact(
     *,
     model_name: str,
@@ -154,49 +261,30 @@ def load_or_build_controlled_artifact(
         A length-controlled DomainArtifact.
     """
     cache_path = controlled_artifact_path(results_dir, model_slug, domain)
-    if cache_path.exists():
-        artifact = torch.load(cache_path, map_location="cpu", weights_only=False)
-        if controlled_cache_matches(
-            artifact,
-            original=original,
-            settings=settings,
-            strategy=strategy,
-        ):
-            records = [
-                SpanRecord.model_validate(record) for record in artifact["records"]
-            ]
-            embeddings = artifact["embeddings"].detach().to(torch.float32).cpu()
-            return DomainArtifact(records=records, embeddings=embeddings)
-
-    bundle = load_transformer_bundle(model_name, cache_dir=settings.embedding.cache_dir)
-    controlled_records = control_records(
-        original.records,
-        bundle.tokenizer,
-        # The probe may ask for a shorter view than the encoder supports, but never longer.
-        max_tokens=min(settings.probe.token_length, settings.embedding.max_tokens),
-        seed=settings.probe.seed,
+    cached = _load_cached_controlled_artifact(
+        cache_path,
+        original=original,
+        settings=settings,
         strategy=strategy,
     )
-    embeddings = embed_texts(
-        bundle,
-        [record.text for record in controlled_records],
-        max_tokens=settings.embedding.max_tokens,
-        pooling=settings.embedding.pooling,
-        batch_size=batch_size,
-    )
+    if cached is not None:
+        return cached
 
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "model_name": model_name,
-            "model_slug": model_slug,
-            "domain": domain,
-            "token_length": settings.probe.token_length,
-            "strategy": strategy,
-            "source_signature": controlled_source_signature(original.records),
-            "records": [record.model_dump() for record in controlled_records],
-            "embeddings": embeddings,
-        },
-        cache_path,
+    controlled = _build_controlled_artifact(
+        model_name=model_name,
+        original=original,
+        settings=settings,
+        batch_size=batch_size,
+        strategy=strategy,
     )
-    return DomainArtifact(records=controlled_records, embeddings=embeddings)
+    _save_controlled_artifact(
+        cache_path,
+        model_name=model_name,
+        model_slug=model_slug,
+        domain=domain,
+        original=original,
+        controlled=controlled,
+        settings=settings,
+        strategy=strategy,
+    )
+    return controlled
