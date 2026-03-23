@@ -15,7 +15,7 @@ Frozen embeddings linearly separate macro-, meso-, and micro-level scientific te
   - `allenai/scibert_scivocab_uncased`
   - `BAAI/bge-small-en-v1.5`
 - The probe is a linear classifier with paper-level splits in [`src/probe.py`](/Users/shang/Development/slod-probe/src/probe.py).
-- Evaluation covers all required conditions: in-domain, cross-domain, and length-controlled in-domain.
+- ## Evaluation covers all required conditions: in-domain, cross-domain, and length-controlled in-domain.
 
 ### 1.1 Dataset Shape
 
@@ -115,4 +115,12 @@ Overall, the error profile looks more like a boundary problem than a collapse pr
 
 The current experiments support a cautious positive answer to the assignment question: frozen embeddings do encode enough information for a linear probe to recover SLoD labels well above baseline. The evidence is strongest for SciBERT, consistent across in-domain and cross-domain testing, and still present after fixed-length control.
 
-The main limitation is still epistemic rather than engineering-related. Because the labels come from paper structure, this is a probe of SLoD-related cues under weak supervision, not a proof that the model contains a clean, explicit hierarchy of abstraction. The most defensible claim is therefore decodability, with length and section-style confounds reduced but not fully eliminated.
+The main limitation is still epistemic rather than engineering-related. Because the labels come from paper structure, this is a probe of SLoD-related cues under weak supervision, not a proof that the model contains a clean, explicit hierarchy of abstraction (Belinkov, 2022). The most defensible claim is therefore decodability, with length and section-style confounds reduced but not fully eliminated.
+
+Future refinements could benefit from the more specialized methods identified in the literature review. For labeling, the Snorkel framework (Ratner et al., 2017) offers a more formal way to model the noise in our structural heuristics by combining multiple labeling functions into probabilistic targets. On the representation side, the use of hyperbolic geometry (Nickel & Kiela, 2017) could provide a more natural inductive bias for the nested, tree-like structure of scientific discourse than the standard Euclidean embeddings used here. These approaches would help transition the study from demonstrating simple decodability to mapping the specific geometric and probabilistic properties of the SLoD signal.
+
+## 5. References
+
+- Belinkov, Y. (2022). *Probing Classifiers: Promises, Shortcomings, and Advances*.
+- Nickel, M., & Kiela, D. (2017). *Poincaré Embeddings for Learning Hierarchical Representations*.
+- Ratner, A., Bach, S. H., Ehrenberg, H., Fries, J., Wu, S., & Ré, C. (2017). *Snorkel: Rapid Training Data Creation with Weak Supervision*.
