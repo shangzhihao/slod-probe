@@ -30,7 +30,7 @@ See [`data/README.md`](data/README.md) for the layout and purpose of both `data/
 - `src/spans/`: weak-label extraction and balancing helpers
 - `src/embed.py`: config-driven script entry point for frozen embedding extraction
 - `src/embedding/`: core embedding and transformer logic
-- `src/probe.py`: script entry point for probe evaluation with CLI overrides
+- `src/probe.py`: script entry point for probe evaluation with assignment CLI flags
 - `src/probing/`: linear probe training, evaluation, metrics, and splitting logic
 - `src/shared/`: shared Pydantic models and utility helpers
 - `data/README.md`: dataset fixture provenance and generated span layout
@@ -59,7 +59,6 @@ control strategy, and shared runtime defaults.
 ```bash
 # preferred
 uv sync
-uv run xxx.py
 
 # or with venv + pip
 python -m venv .venv
@@ -68,6 +67,26 @@ pip install -r requirements.txt
 ```
 
 ## Reproduce the pipeline
+```bash
+# Cached intermediate artifacts are included,
+# so you can run the probes directly.
+uv run python src/probe.py --train --eval --condition all
+
+# Open the analysis notebook.
+uv run jupyter lab notebooks/analysis.ipynb
+
+# Or regenerate the full pipeline from scratch.
+# This may take longer because the embedding models need to be downloaded.
+uv run python src/dataset.py
+uv run python src/embed.py
+uv run python src/probe.py --train --eval --condition all
+
+# To run only the in-domain experiment:
+uv run python src/probe.py --train --eval --condition in_domain
+```
+
+
+## Reproduce the pipeline (without uv)
 
 ```bash
 # Cached intermediate artifacts are included,
@@ -100,5 +119,5 @@ Run the entrypoints as direct scripts, for example `python src/dataset.py`.
   `--condition`.
 - `python src/probe.py --train --eval --condition in_domain` runs only
   the in-domain probe.
-- `python src/probe.py --train --eval --condition --condition all`
+- `python src/probe.py --train --eval --condition all`
   runs the full in-domain, cross-domain, and controlled result set.
