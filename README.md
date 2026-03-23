@@ -18,11 +18,12 @@ The pipeline produces:
 - `data/spans/nlp.jsonl`
 - `data/spans/cv.jsonl`
 - `embeddings/<model_slug>/*.pt`
+- `models/<model_slug>/<condition>/*.pt`
 - `results/probe_results.json`
 - `results/probe_results.png`
 - `results/probe_class_f1.png`
 
-See [`data/README.md`](/Users/shang/Development/slod-probe/data/README.md) for the layout and purpose of both `data/raw/` and `data/spans/`.
+See [`data/README.md`](data/README.md) for the layout and purpose of both `data/raw/` and `data/spans/`.
 
 ## Project layout
 
@@ -30,7 +31,7 @@ See [`data/README.md`](/Users/shang/Development/slod-probe/data/README.md) for t
 - `src/spans/`: weak-label extraction and balancing helpers
 - `src/embed.py`: config-driven script entry point for frozen embedding extraction
 - `src/embedding/`: core embedding and transformer logic
-- `src/probe.py`: script entry point for probe evaluation with CLI overrides
+- `src/probe.py`: script entry point for probe evaluation with assignment CLI flags
 - `src/probing/`: linear probe training, evaluation, metrics, and splitting logic
 - `src/shared/`: shared Pydantic models and utility helpers
 - `data/README.md`: dataset fixture provenance and generated span layout
@@ -50,26 +51,42 @@ matching rules, and balancing.
 The `embedding` section controls model selection, pooling, truncation, output
 directory, and the local Hugging Face cache directory.
 The `probe` section controls split and optimizer settings plus the results
-output directory.
+output directory and the persisted probe-model directory.
 The `pipeline` section stores shared execution settings such as batch size,
 control strategy, and shared runtime defaults.
 
-## Installation
+## Reproduce the pipeline (preferred)
 
 ```bash
-# preferred
+# install virtual enviroment
 uv sync
-uv run xxx.py
 
-# or with venv + pip
+# Cached intermediate artifacts are included,
+# so you can run the probes directly.
+uv run python src/probe.py --train --eval --condition all
+
+# Open the analysis notebook.
+uv run jupyter lab notebooks/analysis.ipynb
+
+# Or regenerate the full pipeline from scratch.
+# This may take longer because the embedding models need to be downloaded.
+uv run python src/dataset.py
+uv run python src/embed.py
+uv run python src/probe.py --train --eval --condition all
+
+# To run only the in-domain experiment:
+uv run python src/probe.py --train --eval --condition in_domain
+```
+
+
+## Reproduce the pipeline (without uv)
+
+```bash
+# install virtual enviroment
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-## Reproduce the pipeline
-
-```bash
 # Cached intermediate artifacts are included,
 # so you can run the probes directly.
 python src/probe.py --train --eval --condition all
@@ -98,7 +115,3 @@ Run the entrypoints as direct scripts, for example `python src/dataset.py`.
 - `src/probe.py` reads its probe settings from `config.toml`; the CLI
   is limited to the assignment-facing flags `--train`, `--eval`, and
   `--condition`.
-- `python src/probe.py --train --eval --condition in_domain` runs only
-  the in-domain probe.
-- `python src/probe.py --train --eval --condition --condition all`
-  runs the full in-domain, cross-domain, and controlled result set.

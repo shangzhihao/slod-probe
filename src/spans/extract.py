@@ -116,6 +116,8 @@ def collect_spans_from_paper(
     Returns:
         A list of SpanRecord objects extracted from the paper.
     """
+    if section_rules is None:
+        section_rules = load_settings().dataset.section_rules
     prepared = _prepare_paper_extraction(
         record,
         source_file,
@@ -127,7 +129,8 @@ def collect_spans_from_paper(
     if prepared is None:
         return []
 
-    intro_lead_paragraphs = _resolve_intro_lead_paragraphs(intro_lead_paragraphs)
+    if intro_lead_paragraphs is None:
+        intro_lead_paragraphs = load_settings().dataset.intro_lead_paragraphs
     spans = _collect_front_matter_spans(prepared)
     if not prepared.paragraph_spans or not prepared.section_spans:
         return dedupe_spans(spans)
@@ -149,7 +152,7 @@ def _prepare_paper_extraction(
     *,
     target_domains: tuple[str, ...],
     domain_inference: DomainInferenceSettings | None,
-    section_rules: SectionRuleSettings | None,
+    section_rules: SectionRuleSettings,
 ) -> PreparedPaperExtraction | None:
     """Validate paper domain and extract base annotation spans."""
     paper_id = int(record["corpusid"])
@@ -188,13 +191,6 @@ def _prepare_paper_extraction(
         section_spans=section_spans,
         paragraph_spans=paragraph_spans,
     )
-
-
-def _resolve_intro_lead_paragraphs(intro_lead_paragraphs: int | None) -> int:
-    """Determine the number of lead paragraphs to use from settings if not provided."""
-    if intro_lead_paragraphs is not None:
-        return intro_lead_paragraphs
-    return load_settings().dataset.intro_lead_paragraphs
 
 
 def _collect_front_matter_spans(prepared: PreparedPaperExtraction) -> list[SpanRecord]:
@@ -236,7 +232,7 @@ def _assign_paragraph_label(
     *,
     section_name: str,
     paragraph_index: int,
-    section_rules: SectionRuleSettings | None,
+    section_rules: SectionRuleSettings,
     intro_lead_paragraphs: int,
 ) -> tuple[str, str] | None:
     """Determine the weak label and source kind for a paragraph based on its section."""

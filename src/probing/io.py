@@ -11,6 +11,8 @@ import torch
 from embedding.core import embed_texts, load_transformer_bundle
 from shared.schema import SpanRecord
 from shared.utils import SLoDSettings
+from .evaluation import TrainedLinearProbe, build_linear_probe
+from .metrics import LABELS
 
 from .controls import LengthControlStrategy, control_records
 from .split import DomainArtifact
@@ -73,6 +75,13 @@ def controlled_cache_matches(
     )
 
 
+def parse_domain_artifact(artifact: dict) -> DomainArtifact:
+    """Convert a serialized artifact payload into the standard container type."""
+    records = [SpanRecord.model_validate(record) for record in artifact["records"]]
+    embeddings = artifact["embeddings"].detach().to(torch.float32).cpu()
+    return DomainArtifact(records=records, embeddings=embeddings)
+
+
 def load_embedding_artifact(path: Path) -> DomainArtifact:
     """Load a PyTorch embedding artifact and convert components to standard types.
 
@@ -86,9 +95,7 @@ def load_embedding_artifact(path: Path) -> DomainArtifact:
         A DomainArtifact container.
     """
     artifact = torch.load(path, map_location="cpu", weights_only=False)
-    records = [SpanRecord.model_validate(record) for record in artifact["records"]]
-    embeddings = artifact["embeddings"].detach().to(torch.float32).cpu()
-    return DomainArtifact(records=records, embeddings=embeddings)
+    return parse_domain_artifact(artifact)
 
 
 def load_model_domain_artifacts(
@@ -124,6 +131,118 @@ def controlled_artifact_path(results_dir: Path, model_slug: str, domain: str) ->
     return results_dir / "controlled_embeddings" / model_slug / f"{domain}.pt"
 
 
+def probe_model_path(
+    models_dir: Path,
+    *,
+    model_slug: str,
+    condition: str,
+    train_domain: str,
+    test_domain: str,
+) -> Path:
+    """Determine the path for a persisted linear probe."""
+    return models_dir / model_slug / condition / f"{train_domain}__{test_domain}.pt"
+
+
+def _load_cached_controlled_artifact(
+    cache_path: Path,
+    *,
+    original: DomainArtifact,
+    settings: SLoDSettings,
+    strategy: LengthControlStrategy,
+) -> DomainArtifact | None:
+    """Load a cached controlled artifact when the cache matches current inputs."""
+    if not cache_path.exists():
+        return None
+
+    artifact = torch.load(cache_path, map_location="cpu", weights_only=False)
+    if not controlled_cache_matches(
+        artifact,
+        original=original,
+        settings=settings,
+        strategy=strategy,
+    ):
+        return None
+    return parse_domain_artifact(artifact)
+
+
+def _build_controlled_artifact(
+    *,
+    model_name: str,
+    original: DomainArtifact,
+    settings: SLoDSettings,
+    batch_size: int,
+    strategy: LengthControlStrategy,
+) -> DomainArtifact:
+    """Apply length control and re-embed the controlled records."""
+    bundle = load_transformer_bundle(model_name, cache_dir=settings.embedding.cache_dir)
+    controlled_records = control_records(
+        original.records,
+        bundle.tokenizer,
+        # The probe may ask for a shorter view than the encoder supports, but never longer.
+        max_tokens=min(settings.probe.token_length, settings.embedding.max_tokens),
+        seed=settings.probe.seed,
+        strategy=strategy,
+    )
+    embeddings = embed_texts(
+        bundle,
+        [record.text for record in controlled_records],
+        max_tokens=settings.embedding.max_tokens,
+        pooling=settings.embedding.pooling,
+        batch_size=batch_size,
+    )
+    return DomainArtifact(records=controlled_records, embeddings=embeddings)
+
+
+def _controlled_artifact_payload(
+    *,
+    model_name: str,
+    model_slug: str,
+    domain: str,
+    original: DomainArtifact,
+    controlled: DomainArtifact,
+    settings: SLoDSettings,
+    strategy: LengthControlStrategy,
+) -> dict[str, object]:
+    """Build the serialized cache payload for a controlled artifact."""
+    return {
+        "model_name": model_name,
+        "model_slug": model_slug,
+        "domain": domain,
+        "token_length": settings.probe.token_length,
+        "strategy": strategy,
+        "source_signature": controlled_source_signature(original.records),
+        "records": [record.model_dump() for record in controlled.records],
+        "embeddings": controlled.embeddings,
+    }
+
+
+def _save_controlled_artifact(
+    cache_path: Path,
+    *,
+    model_name: str,
+    model_slug: str,
+    domain: str,
+    original: DomainArtifact,
+    controlled: DomainArtifact,
+    settings: SLoDSettings,
+    strategy: LengthControlStrategy,
+) -> None:
+    """Persist a rebuilt controlled artifact to its cache location."""
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        _controlled_artifact_payload(
+            model_name=model_name,
+            model_slug=model_slug,
+            domain=domain,
+            original=original,
+            controlled=controlled,
+            settings=settings,
+            strategy=strategy,
+        ),
+        cache_path,
+    )
+
+
 def load_or_build_controlled_artifact(
     *,
     model_name: str,
@@ -154,49 +273,81 @@ def load_or_build_controlled_artifact(
         A length-controlled DomainArtifact.
     """
     cache_path = controlled_artifact_path(results_dir, model_slug, domain)
-    if cache_path.exists():
-        artifact = torch.load(cache_path, map_location="cpu", weights_only=False)
-        if controlled_cache_matches(
-            artifact,
-            original=original,
-            settings=settings,
-            strategy=strategy,
-        ):
-            records = [
-                SpanRecord.model_validate(record) for record in artifact["records"]
-            ]
-            embeddings = artifact["embeddings"].detach().to(torch.float32).cpu()
-            return DomainArtifact(records=records, embeddings=embeddings)
-
-    bundle = load_transformer_bundle(model_name, cache_dir=settings.embedding.cache_dir)
-    controlled_records = control_records(
-        original.records,
-        bundle.tokenizer,
-        # The probe may ask for a shorter view than the encoder supports, but never longer.
-        max_tokens=min(settings.probe.token_length, settings.embedding.max_tokens),
-        seed=settings.probe.seed,
+    cached = _load_cached_controlled_artifact(
+        cache_path,
+        original=original,
+        settings=settings,
         strategy=strategy,
     )
-    embeddings = embed_texts(
-        bundle,
-        [record.text for record in controlled_records],
-        max_tokens=settings.embedding.max_tokens,
-        pooling=settings.embedding.pooling,
-        batch_size=batch_size,
-    )
+    if cached is not None:
+        return cached
 
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    controlled = _build_controlled_artifact(
+        model_name=model_name,
+        original=original,
+        settings=settings,
+        batch_size=batch_size,
+        strategy=strategy,
+    )
+    _save_controlled_artifact(
+        cache_path,
+        model_name=model_name,
+        model_slug=model_slug,
+        domain=domain,
+        original=original,
+        controlled=controlled,
+        settings=settings,
+        strategy=strategy,
+    )
+    return controlled
+
+
+def save_probe_model(
+    path: Path,
+    *,
+    model_name: str,
+    model_slug: str,
+    condition: str,
+    train_domain: str,
+    test_domain: str,
+    controlled: bool,
+    control_strategy: LengthControlStrategy | None,
+    trained_probe: TrainedLinearProbe,
+) -> None:
+    """Persist a trained linear probe and its normalization statistics."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
             "model_name": model_name,
             "model_slug": model_slug,
-            "domain": domain,
-            "token_length": settings.probe.token_length,
-            "strategy": strategy,
-            "source_signature": controlled_source_signature(original.records),
-            "records": [record.model_dump() for record in controlled_records],
-            "embeddings": embeddings,
+            "condition": condition,
+            "train_domain": train_domain,
+            "test_domain": test_domain,
+            "controlled": controlled,
+            "control_strategy": control_strategy,
+            "label_order": LABELS,
+            "input_dim": trained_probe.mean.shape[1],
+            "mean": trained_probe.mean.detach().to(torch.float32).cpu(),
+            "std": trained_probe.std.detach().to(torch.float32).cpu(),
+            "state_dict": {
+                key: value.detach().to(torch.float32).cpu()
+                for key, value in trained_probe.model.state_dict().items()
+            },
         },
-        cache_path,
+        path,
     )
-    return DomainArtifact(records=controlled_records, embeddings=embeddings)
+
+
+def load_probe_model(path: Path) -> TrainedLinearProbe:
+    """Load a previously persisted linear probe."""
+    if not path.exists():
+        raise FileNotFoundError(f"missing probe model artifact: {path}")
+
+    artifact = torch.load(path, map_location="cpu", weights_only=False)
+    model = build_linear_probe(int(artifact["input_dim"]))
+    model.load_state_dict(artifact["state_dict"])
+    return TrainedLinearProbe(
+        model=model.eval(),
+        mean=artifact["mean"].detach().to(torch.float32).cpu(),
+        std=artifact["std"].detach().to(torch.float32).cpu(),
+    )

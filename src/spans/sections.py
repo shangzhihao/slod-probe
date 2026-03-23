@@ -5,12 +5,6 @@ from __future__ import annotations
 import re
 
 from shared.schema import SectionRuleSettings
-from shared.utils import load_settings
-
-
-def _section_rules(section_rules: SectionRuleSettings | None) -> SectionRuleSettings:
-    """Helper to resolve section rules from either input or project settings."""
-    return section_rules or load_settings().dataset.section_rules
 
 
 def normalize_whitespace(text: str) -> str:
@@ -66,33 +60,25 @@ def match_section(
     return any(keyword in key for keyword in keywords)
 
 
-def is_spurious_section(
-    section_name: str, section_rules: SectionRuleSettings | None = None
-) -> bool:
+def is_spurious_section(section_name: str, section_rules: SectionRuleSettings) -> bool:
     """Check if a section header represents boilerplate or non-content (e.g. Appendix)."""
-    rules = _section_rules(section_rules)
-    return match_section(section_name, rules.spurious_section_prefixes, prefix=True)
+    return match_section(
+        section_name, section_rules.spurious_section_prefixes, prefix=True
+    )
 
 
-def is_intro_section(
-    section_name: str, section_rules: SectionRuleSettings | None = None
-) -> bool:
+def is_intro_section(section_name: str, section_rules: SectionRuleSettings) -> bool:
     """Check if a section header represents an introduction."""
-    rules = _section_rules(section_rules)
-    return match_section(section_name, rules.intro_keywords)
+    return match_section(section_name, section_rules.intro_keywords)
 
 
 def is_conclusion_section(
-    section_name: str, section_rules: SectionRuleSettings | None = None
+    section_name: str, section_rules: SectionRuleSettings
 ) -> bool:
     """Check if a section header represents a conclusion."""
-    rules = _section_rules(section_rules)
-    return match_section(section_name, rules.conclusion_keywords)
+    return match_section(section_name, section_rules.conclusion_keywords)
 
 
-def is_micro_section(
-    section_name: str, section_rules: SectionRuleSettings | None = None
-) -> bool:
+def is_micro_section(section_name: str, section_rules: SectionRuleSettings) -> bool:
     """Check if a section header represents a technical or detailed content (micro)."""
-    rules = _section_rules(section_rules)
-    return match_section(section_name, rules.micro_section_keywords)
+    return match_section(section_name, section_rules.micro_section_keywords)

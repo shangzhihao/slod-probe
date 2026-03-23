@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-22T18:55:02.431566+00:00",
+  "generated_at": "2026-03-23T15:31:56.069476+00:00",
   "config": {
     "dataset": {
       "raw_dir": "data/raw",
@@ -162,11 +162,12 @@
       "learning_rate": 0.05,
       "num_steps": 400,
       "weight_decay": 0.0001,
-      "results_dir": "results"
+      "results_dir": "results",
+      "models_dir": "models"
     }
   },
-  "embeddings_dir": "/Users/shang/Development/slod-probe/embeddings",
-  "results_dir": "/Users/shang/Development/slod-probe/results",
+  "embeddings_dir": "embeddings",
+  "results_dir": "results",
   "condition": "all",
   "runs": [
     {
