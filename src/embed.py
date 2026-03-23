@@ -46,7 +46,7 @@ def _embed_domain_records(
 ) -> object:
     """Embed one domain's records while preserving their row order."""
     return embed_texts(
-        bundle,
+        bundle,  # pyright: ignore[reportArgumentType]
         [record.text for record in records],
         max_tokens=settings.embedding.max_tokens,
         pooling=settings.embedding.pooling,
@@ -72,7 +72,7 @@ def _write_domain_embedding_artifact(
         seed=settings.embedding.seed,
         domain=domain,
         records=records,
-        embeddings=embeddings,
+        embeddings=embeddings,  # pyright: ignore[reportArgumentType]
     )
 
 
