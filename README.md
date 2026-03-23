@@ -22,7 +22,7 @@ The pipeline produces:
 - `results/probe_results.png`
 - `results/probe_class_f1.png`
 
-See [`data/README.md`](/Users/shang/Development/slod-probe/data/README.md) for the layout and purpose of both `data/raw/` and `data/spans/`.
+See [`data/README.md`](data/README.md) for the layout and purpose of both `data/raw/` and `data/spans/`.
 
 ## Project layout
 

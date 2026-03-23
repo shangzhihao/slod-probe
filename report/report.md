@@ -6,15 +6,15 @@ Frozen embeddings linearly separate macro-, meso-, and micro-level scientific te
 
 ## 1. Method
 
-- Weak labels are generated from prepared S2ORC shards in [`src/dataset.py`](/Users/shang/Development/slod-probe/src/dataset.py).
+- Weak labels are generated from prepared S2ORC shards in [`src/dataset.py`](../src/dataset.py).
 - The labeling rules now match the assignment definition:
   - `macro`: title, abstract, first two introduction paragraphs, conclusion
   - `meso`: first sentence of each real non-intro, non-conclusion section
   - `micro`: non-lead paragraphs from methods-, experiments-, and results-like sections
-- Two frozen encoders are evaluated in [`src/embed.py`](/Users/shang/Development/slod-probe/src/embed.py):
+- Two frozen encoders are evaluated in [`src/embed.py`](../src/embed.py):
   - `allenai/scibert_scivocab_uncased`
   - `BAAI/bge-small-en-v1.5`
-- The probe is a linear classifier with paper-level splits in [`src/probe.py`](/Users/shang/Development/slod-probe/src/probe.py).
+- The probe is a linear classifier with paper-level splits in [`src/probe.py`](../src/probe.py).
 - ## Evaluation covers all required conditions: in-domain, cross-domain, and length-controlled in-domain.
 
 ### 1.1 Dataset Shape
@@ -30,7 +30,7 @@ Overall, the dataset contains 6,051 spans across 306 papers, with 2,017 examples
 
 ## 2. Results
 
-The full metrics are saved in [`results/probe_results.json`](/Users/shang/Development/slod-probe/results/probe_results.json). Majority baselines remain low, with macro F1 between 0.147 and 0.167 for the full in-domain and cross-domain settings.
+The full metrics are saved in [`results/probe_results.json`](../results/probe_results.json). Majority baselines remain low, with macro F1 between 0.147 and 0.167 for the full in-domain and cross-domain settings.
 
 ![Macro F1 across in-domain, cross-domain, and controlled settings for both embedding models.](../results/probe_results.png)
 
@@ -84,7 +84,7 @@ The most persistent pattern is that `meso` remains the hardest class. That makes
 
 ### 2.2 Confusion Matrices
 
-Ordered `macro`, `meso`, `micro`. To keep the report compact, the main text shows the confusion matrices for the strongest model, SciBERT; the full result set for both models remains in [`results/probe_results.json`](/Users/shang/Development/slod-probe/results/probe_results.json).
+Ordered `macro`, `meso`, `micro`. To keep the report compact, the main text shows the confusion matrices for the strongest model, SciBERT; the full result set for both models remains in [`results/probe_results.json`](../results/probe_results.json).
 
 - SciBERT in-domain NLP -> NLP: `[[136, 36, 36], [28, 107, 40], [40, 59, 136]]`
 - SciBERT in-domain CV -> CV: `[[144, 33, 32], [27, 137, 43], [19, 49, 109]]`
