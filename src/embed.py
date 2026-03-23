@@ -20,6 +20,77 @@ from shared.schema import SpanRecord
 from shared.utils import SLoDSettings, load_settings, slugify
 
 
+def _resolve_embedding_inputs(
+    settings: SLoDSettings,
+    *,
+    spans_dir: Path | None,
+    output_dir: Path | None,
+    batch_size: int | None,
+) -> tuple[Path, Path, int]:
+    """Resolve optional embedding pipeline overrides from project settings."""
+    resolved_batch_size = (
+        settings.pipeline.batch_size if batch_size is None else batch_size
+    )
+    resolved_spans_dir = settings.dataset.output_dir if spans_dir is None else spans_dir
+    resolved_output_dir = (
+        settings.embedding.output_dir if output_dir is None else output_dir
+    )
+    return resolved_spans_dir, resolved_output_dir, resolved_batch_size
+
+
+def _embed_domain_records(
+    records: list[SpanRecord],
+    *,
+    bundle: object,
+    settings: SLoDSettings,
+    batch_size: int,
+) -> object:
+    """Embed one domain's records while preserving their row order."""
+    return embed_texts(
+        bundle,
+        [record.text for record in records],
+        max_tokens=settings.embedding.max_tokens,
+        pooling=settings.embedding.pooling,
+        batch_size=batch_size,
+    )
+
+
+def _write_domain_embedding_artifact(
+    artifact_path: Path,
+    *,
+    model_name: str,
+    domain: str,
+    records: list[SpanRecord],
+    embeddings: object,
+    settings: SLoDSettings,
+) -> Path:
+    """Persist one domain embedding artifact."""
+    return write_embedding_artifact(
+        artifact_path,
+        model_name=model_name,
+        pooling=settings.embedding.pooling,
+        max_tokens=settings.embedding.max_tokens,
+        seed=settings.embedding.seed,
+        domain=domain,
+        records=records,
+        embeddings=embeddings,
+    )
+
+
+def _write_model_manifest(
+    model_dir: Path, *, model_name: str, settings: SLoDSettings
+) -> None:
+    """Persist the manifest describing one model's embedding configuration."""
+    write_manifest(
+        model_dir,
+        model_name=model_name,
+        model_slug=slugify(model_name),
+        pooling=settings.embedding.pooling,
+        max_tokens=settings.embedding.max_tokens,
+        seed=settings.embedding.seed,
+    )
+
+
 def _embed_model_domains(
     model_name: str,
     *,
@@ -38,36 +109,45 @@ def _embed_model_domains(
     model_outputs: dict[str, Path] = {}
     for domain, records in domain_spans.items():
         print(f"  embedding domain {domain}: {len(records)} spans", flush=True)
-        # Preserve record order so the saved embeddings line up with the JSON metadata.
-        embeddings = embed_texts(
-            bundle,
-            [record.text for record in records],
-            max_tokens=settings.embedding.max_tokens,
-            pooling=settings.embedding.pooling,
+        embeddings = _embed_domain_records(
+            records,
+            bundle=bundle,
+            settings=settings,
             batch_size=batch_size,
         )
         artifact_path = model_dir / f"{domain}.pt"
-        model_outputs[domain] = write_embedding_artifact(
+        model_outputs[domain] = _write_domain_embedding_artifact(
             artifact_path,
             model_name=model_name,
-            pooling=settings.embedding.pooling,
-            max_tokens=settings.embedding.max_tokens,
-            seed=settings.embedding.seed,
             domain=domain,
             records=records,
             embeddings=embeddings,
+            settings=settings,
         )
         print(f"  wrote {artifact_path}", flush=True)
 
-    write_manifest(
-        model_dir,
-        model_name=model_name,
-        model_slug=model_slug,
-        pooling=settings.embedding.pooling,
-        max_tokens=settings.embedding.max_tokens,
-        seed=settings.embedding.seed,
-    )
+    _write_model_manifest(model_dir, model_name=model_name, settings=settings)
     return model_outputs
+
+
+def _embed_configured_models(
+    settings: SLoDSettings,
+    *,
+    domain_spans: dict[str, list[SpanRecord]],
+    output_dir: Path,
+    batch_size: int,
+) -> dict[str, dict[str, Path]]:
+    """Run per-model embedding generation for the configured backbone list."""
+    output_paths: dict[str, dict[str, Path]] = {}
+    for model_name in settings.embedding.model_name:
+        output_paths[model_name] = _embed_model_domains(
+            model_name,
+            settings=settings,
+            domain_spans=domain_spans,
+            output_dir=output_dir,
+            batch_size=batch_size,
+        )
+    return output_paths
 
 
 def build_embeddings(
@@ -88,23 +168,20 @@ def build_embeddings(
     Returns:
         A nested dictionary mapping model names and domains to artifact paths.
     """
-    batch_size = settings.pipeline.batch_size if batch_size is None else batch_size
-    spans_dir = settings.dataset.output_dir if spans_dir is None else spans_dir
-    output_dir = settings.embedding.output_dir if output_dir is None else output_dir
+    spans_dir, output_dir, batch_size = _resolve_embedding_inputs(
+        settings,
+        spans_dir=spans_dir,
+        output_dir=output_dir,
+        batch_size=batch_size,
+    )
     configure_hf_cache(settings.embedding.cache_dir)
     domain_spans = load_domain_spans(spans_dir, settings.dataset.domains)
-    output_paths: dict[str, dict[str, Path]] = {}
-
-    for model_name in settings.embedding.model_name:
-        output_paths[model_name] = _embed_model_domains(
-            model_name,
-            settings=settings,
-            domain_spans=domain_spans,
-            output_dir=output_dir,
-            batch_size=batch_size,
-        )
-
-    return output_paths
+    return _embed_configured_models(
+        settings,
+        domain_spans=domain_spans,
+        output_dir=output_dir,
+        batch_size=batch_size,
+    )
 
 
 def main() -> int:
