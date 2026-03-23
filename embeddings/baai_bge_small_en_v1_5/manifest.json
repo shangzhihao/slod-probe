@@ -1,7 +1,0 @@
-{
-  "model_name": "BAAI/bge-small-en-v1.5",
-  "model_slug": "baai_bge_small_en_v1_5",
-  "pooling": "mean",
-  "max_tokens": 80,
-  "seed": 13
-}

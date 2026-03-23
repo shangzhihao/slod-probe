@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import os
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -254,39 +254,3 @@ def write_embedding_artifact(
     }
     torch.save(payload, output_path)
     return output_path
-
-
-def write_manifest(
-    output_dir: Path,
-    *,
-    model_name: str,
-    model_slug: str,
-    pooling: str,
-    max_tokens: int,
-    seed: int,
-) -> Path:
-    """Write a manifest JSON file describing one model's embedding configuration.
-
-    Args:
-        output_dir: Directory where the manifest should be written.
-        model_name: Hugging Face model hub identifier.
-        model_slug: Filesystem-safe name for the model.
-        pooling: Pooling strategy used.
-        max_tokens: Token budget used.
-        seed: Seed used.
-
-    Returns:
-        The Path to the manifest file.
-    """
-    manifest_path = output_dir / "manifest.json"
-    manifest = {
-        "model_name": model_name,
-        "model_slug": model_slug,
-        "pooling": pooling,
-        "max_tokens": max_tokens,
-        "seed": seed,
-    }
-    with manifest_path.open("w", encoding="utf-8") as handle:
-        json.dump(manifest, handle, indent=2, ensure_ascii=True)
-        handle.write("\n")
-    return manifest_path

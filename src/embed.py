@@ -14,7 +14,6 @@ from embedding.core import (
     load_domain_spans,
     load_transformer_bundle,
     write_embedding_artifact,
-    write_manifest,
 )
 from shared.schema import SpanRecord
 from shared.utils import SLoDSettings, load_settings, slugify
@@ -77,20 +76,6 @@ def _write_domain_embedding_artifact(
     )
 
 
-def _write_model_manifest(
-    model_dir: Path, *, model_name: str, settings: SLoDSettings
-) -> None:
-    """Persist the manifest describing one model's embedding configuration."""
-    write_manifest(
-        model_dir,
-        model_name=model_name,
-        model_slug=slugify(model_name),
-        pooling=settings.embedding.pooling,
-        max_tokens=settings.embedding.max_tokens,
-        seed=settings.embedding.seed,
-    )
-
-
 def _embed_model_domains(
     model_name: str,
     *,
@@ -126,7 +111,6 @@ def _embed_model_domains(
         )
         print(f"  wrote {artifact_path}", flush=True)
 
-    _write_model_manifest(model_dir, model_name=model_name, settings=settings)
     return model_outputs
 
 

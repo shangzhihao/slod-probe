@@ -1,7 +1,0 @@
-{
-  "model_name": "allenai/scibert_scivocab_uncased",
-  "model_slug": "allenai_scibert_scivocab_uncased",
-  "pooling": "mean",
-  "max_tokens": 80,
-  "seed": 13
-}
