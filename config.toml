@@ -157,3 +157,5 @@ num_steps = 400
 weight_decay = 1e-4
 # Directory where probe results and controlled embeddings are written.
 results_dir = "results"
+# Directory where trained probe models are written.
+models_dir = "models"

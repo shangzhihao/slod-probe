@@ -10,12 +10,19 @@ from typing import Any
 from shared.utils import SLoDSettings, slugify
 
 from .controls import LengthControlStrategy
-from .evaluation import evaluate_split
+from .evaluation import evaluate_split, evaluate_trained_probe, fit_linear_probe
 from .metrics import LABELS
-from .io import load_model_domain_artifacts, load_or_build_controlled_artifact
+from .io import (
+    load_model_domain_artifacts,
+    load_or_build_controlled_artifact,
+    load_probe_model,
+    probe_model_path,
+    save_probe_model,
+)
 from .split import DomainArtifact, split_paper_ids, subset_artifact
 
 type DomainSplit = dict[str, Any]
+type ProbeJob = dict[str, Any]
 
 
 def _build_run_record(
@@ -292,10 +299,13 @@ def _run_model_probes(
     settings: SLoDSettings,
     embeddings_dir: Path,
     results_dir: Path,
+    models_dir: Path,
     batch_size: int,
     control_strategy: LengthControlStrategy,
     condition: str,
-) -> list[dict[str, Any]]:
+    train: bool,
+    evaluate: bool,
+) -> dict[str, Any]:
     """Run the requested probe family for a single embedding model."""
     model_slug = slugify(model_name)
     print(f"probing model {model_name} -> {model_slug}", flush=True)
@@ -303,15 +313,7 @@ def _run_model_probes(
         embeddings_dir, model_slug, settings.dataset.domains
     )
     domain_splits = _build_domain_splits(artifacts, settings)
-
-    if condition == "in_domain":
-        return run_in_domain(
-            model_name=model_name,
-            model_slug=model_slug,
-            domain_splits=domain_splits,
-            settings=settings,
-        )
-    return run_all(
+    jobs = _build_probe_jobs(
         model_name=model_name,
         model_slug=model_slug,
         artifacts=artifacts,
@@ -320,37 +322,244 @@ def _run_model_probes(
         results_dir=results_dir,
         batch_size=batch_size,
         control_strategy=control_strategy,
+        condition=condition,
     )
+    return _execute_probe_jobs(
+        jobs,
+        model_name=model_name,
+        model_slug=model_slug,
+        settings=settings,
+        models_dir=models_dir,
+        train=train,
+        evaluate=evaluate,
+    )
+
+
+def _build_probe_jobs(
+    *,
+    model_name: str,
+    model_slug: str,
+    artifacts: dict[str, DomainArtifact],
+    domain_splits: dict[str, DomainSplit],
+    settings: SLoDSettings,
+    results_dir: Path,
+    batch_size: int,
+    control_strategy: LengthControlStrategy,
+    condition: str,
+) -> list[ProbeJob]:
+    """Build the probe jobs needed for the requested condition."""
+    if condition == "in_domain":
+        return _build_in_domain_jobs(domain_splits)
+    return [
+        *_build_in_domain_jobs(domain_splits),
+        *_build_cross_domain_jobs(artifacts, domain_splits),
+        *_build_controlled_jobs(
+            model_name=model_name,
+            model_slug=model_slug,
+            artifacts=artifacts,
+            domain_splits=domain_splits,
+            settings=settings,
+            results_dir=results_dir,
+            batch_size=batch_size,
+            control_strategy=control_strategy,
+        ),
+    ]
+
+
+def _build_in_domain_jobs(domain_splits: dict[str, DomainSplit]) -> list[ProbeJob]:
+    """Build in-domain train/eval jobs."""
+    jobs: list[ProbeJob] = []
+    for domain, split in domain_splits.items():
+        jobs.append(
+            {
+                "display_label": f"  in-domain {domain}",
+                "condition": "in_domain",
+                "train_domain": domain,
+                "test_domain": domain,
+                "controlled": False,
+                "control_strategy": None,
+                "train_artifact": split["train_artifact"],
+                "test_artifact": split["test_artifact"],
+            }
+        )
+    return jobs
+
+
+def _build_cross_domain_jobs(
+    artifacts: dict[str, DomainArtifact],
+    domain_splits: dict[str, DomainSplit],
+) -> list[ProbeJob]:
+    """Build cross-domain train/eval jobs."""
+    jobs: list[ProbeJob] = []
+    domains = list(artifacts.keys())
+    for train_domain in domains:
+        for test_domain in domains:
+            if train_domain == test_domain:
+                continue
+            jobs.append(
+                {
+                    "display_label": f"  cross-domain {train_domain} -> {test_domain}",
+                    "condition": "cross_domain",
+                    "train_domain": train_domain,
+                    "test_domain": test_domain,
+                    "controlled": False,
+                    "control_strategy": None,
+                    "train_artifact": domain_splits[train_domain]["train_artifact"],
+                    "test_artifact": artifacts[test_domain],
+                }
+            )
+    return jobs
+
+
+def _build_controlled_jobs(
+    *,
+    model_name: str,
+    model_slug: str,
+    artifacts: dict[str, DomainArtifact],
+    domain_splits: dict[str, DomainSplit],
+    settings: SLoDSettings,
+    results_dir: Path,
+    batch_size: int,
+    control_strategy: LengthControlStrategy,
+) -> list[ProbeJob]:
+    """Build controlled in-domain train/eval jobs."""
+    jobs: list[ProbeJob] = []
+    for domain, artifact in artifacts.items():
+        controlled_artifact = load_or_build_controlled_artifact(
+            model_name=model_name,
+            model_slug=model_slug,
+            domain=domain,
+            original=artifact,
+            settings=settings,
+            results_dir=results_dir,
+            batch_size=batch_size,
+            strategy=control_strategy,
+        )
+        train_ids = domain_splits[domain]["train_ids"]
+        test_ids = domain_splits[domain]["test_ids"]
+        jobs.append(
+            {
+                "display_label": f"  controlled in-domain {domain}",
+                "condition": "controlled",
+                "train_domain": domain,
+                "test_domain": domain,
+                "controlled": True,
+                "control_strategy": control_strategy,
+                "train_artifact": subset_artifact(controlled_artifact, train_ids),
+                "test_artifact": subset_artifact(controlled_artifact, test_ids),
+            }
+        )
+    return jobs
+
+
+def _execute_probe_jobs(
+    jobs: list[ProbeJob],
+    *,
+    model_name: str,
+    model_slug: str,
+    settings: SLoDSettings,
+    models_dir: Path,
+    train: bool,
+    evaluate: bool,
+) -> dict[str, Any]:
+    """Run training and/or evaluation for the provided jobs."""
+    runs: list[dict[str, Any]] = []
+    model_paths: list[str] = []
+
+    for job in jobs:
+        print(job["display_label"], flush=True)
+        path = probe_model_path(
+            models_dir,
+            model_slug=model_slug,
+            condition=job["condition"],
+            train_domain=job["train_domain"],
+            test_domain=job["test_domain"],
+        )
+        trained_probe = None
+
+        if train:
+            trained_probe = fit_linear_probe(
+                job["train_artifact"],
+                seed=settings.probe.seed,
+                learning_rate=settings.probe.learning_rate,
+                num_steps=settings.probe.num_steps,
+                weight_decay=settings.probe.weight_decay,
+            )
+            save_probe_model(
+                path,
+                model_name=model_name,
+                model_slug=model_slug,
+                condition=job["condition"],
+                train_domain=job["train_domain"],
+                test_domain=job["test_domain"],
+                controlled=job["controlled"],
+                control_strategy=job["control_strategy"],
+                trained_probe=trained_probe,
+            )
+            model_paths.append(str(path))
+
+        if evaluate:
+            if trained_probe is None:
+                trained_probe = load_probe_model(path)
+            split_result = evaluate_trained_probe(
+                job["train_artifact"],
+                job["test_artifact"],
+                trained_probe=trained_probe,
+            )
+            runs.append(
+                _build_run_record(
+                    model_name=model_name,
+                    model_slug=model_slug,
+                    condition=job["condition"],
+                    train_domain=job["train_domain"],
+                    test_domain=job["test_domain"],
+                    split_result=split_result,
+                    controlled=job["controlled"],
+                    control_strategy=job["control_strategy"],
+                    settings=settings,
+                )
+            )
+
+    return {"runs": runs, "model_paths": model_paths}
 
 
 def run_probes(
     settings: SLoDSettings,
     *,
     condition: str = "all",
+    train: bool = True,
+    evaluate: bool = True,
 ) -> dict[str, Any]:
     """Train and evaluate configured probe conditions for every embedding model."""
     _validate_probe_condition(condition)
     embeddings_dir = settings.embedding.output_dir
     results_dir = settings.probe.results_dir
+    models_dir = settings.probe.models_dir
     batch_size = settings.pipeline.batch_size
     control_strategy = settings.pipeline.control_strategy
     results_dir.mkdir(parents=True, exist_ok=True)
     runs: list[dict[str, Any]] = []
+    model_paths: list[str] = []
 
     for model_name in settings.embedding.model_name:
-        runs.extend(
-            _run_model_probes(
-                model_name=model_name,
-                settings=settings,
-                embeddings_dir=embeddings_dir,
-                results_dir=results_dir,
-                batch_size=batch_size,
-                control_strategy=control_strategy,
-                condition=condition,
-            )
+        payload = _run_model_probes(
+            model_name=model_name,
+            settings=settings,
+            embeddings_dir=embeddings_dir,
+            results_dir=results_dir,
+            models_dir=models_dir,
+            batch_size=batch_size,
+            control_strategy=control_strategy,
+            condition=condition,
+            train=train,
+            evaluate=evaluate,
         )
+        runs.extend(payload["runs"])
+        model_paths.extend(payload["model_paths"])
 
-    results_path = save_probe_results(
-        results_dir, settings, embeddings_dir, condition, runs
-    )
-    return {"results_path": results_path, "runs": runs}
+    results_path = None
+    if evaluate:
+        results_path = save_probe_results(
+            results_dir, settings, embeddings_dir, condition, runs
+        )
+    return {"results_path": results_path, "runs": runs, "model_paths": model_paths}

@@ -26,12 +26,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--train",
         action="store_true",
-        help="Compatibility flag for the assignment command; training is always performed.",
+        help="Train probes and save them to the configured model directory.",
     )
     parser.add_argument(
         "--eval",
         action="store_true",
-        help="Compatibility flag for the assignment command; evaluation is always performed.",
+        help="Evaluate probes, loading saved models when training is not requested.",
     )
     return parser
 
@@ -44,17 +44,37 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = build_parser()
     args = parser.parse_args(argv)
+    if not args.train and not args.eval:
+        print("no jobs")
+        return 0
+
     settings = load_settings()
-    payload = run_probes(settings, condition=args.condition)
-    print(
-        json.dumps(
-            {
-                "results_path": payload["results_path"],
-                "runs": len(payload["runs"]),
-            },
-            ensure_ascii=True,
-        )
+    payload = run_probes(
+        settings,
+        condition=args.condition,
+        train=args.train,
+        evaluate=args.eval,
     )
+    if args.train and not args.eval:
+        print(
+            json.dumps(
+                {
+                    "models_dir": str(settings.probe.models_dir),
+                    "saved_models": len(payload["model_paths"]),
+                },
+                ensure_ascii=True,
+            )
+        )
+    else:
+        print(
+            json.dumps(
+                {
+                    "results_path": payload["results_path"],
+                    "runs": len(payload["runs"]),
+                },
+                ensure_ascii=True,
+            )
+        )
     return 0
 
 

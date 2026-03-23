@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -17,6 +18,33 @@ from .metrics import (
     labels_to_indices,
 )
 from .split import DomainArtifact
+
+
+@dataclass
+class TrainedLinearProbe:
+    """A trained probe paired with the standardization statistics it expects."""
+
+    model: nn.Module
+    mean: torch.Tensor
+    std: torch.Tensor
+
+
+def compute_standardization_stats(
+    train_x: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Compute train-set statistics used to standardize embeddings."""
+    mean = train_x.mean(dim=0, keepdim=True)
+    std = train_x.std(dim=0, keepdim=True, unbiased=False).clamp_min(1e-6)
+    return mean, std
+
+
+def apply_standardization(
+    x: torch.Tensor,
+    mean: torch.Tensor,
+    std: torch.Tensor,
+) -> torch.Tensor:
+    """Apply a precomputed z-score normalization transform."""
+    return (x - mean) / std
 
 
 def standardize_embeddings(
@@ -35,9 +63,15 @@ def standardize_embeddings(
     Returns:
         A tuple of (standardized_train_x, standardized_test_x).
     """
-    mean = train_x.mean(dim=0, keepdim=True)
-    std = train_x.std(dim=0, keepdim=True, unbiased=False).clamp_min(1e-6)
-    return (train_x - mean) / std, (test_x - mean) / std
+    mean, std = compute_standardization_stats(train_x)
+    return apply_standardization(train_x, mean, std), apply_standardization(
+        test_x, mean, std
+    )
+
+
+def build_linear_probe(input_dim: int) -> nn.Linear:
+    """Construct an untrained linear classifier for probe persistence/loading."""
+    return nn.Linear(input_dim, len(LABELS))
 
 
 def train_linear_probe(
@@ -70,7 +104,7 @@ def train_linear_probe(
     np.random.seed(seed)
     random.seed(seed)
 
-    model = nn.Linear(train_x.shape[1], len(LABELS))
+    model = build_linear_probe(train_x.shape[1])
     loss_fn: nn.Module = nn.CrossEntropyLoss()
 
     optimizer = torch.optim.AdamW(
@@ -115,6 +149,29 @@ def _prepare_split_inputs(
         train_artifact.embeddings, test_artifact.embeddings
     )
     return train_labels, test_labels, train_x, test_x
+
+
+def fit_linear_probe(
+    train_artifact: DomainArtifact,
+    *,
+    seed: int,
+    learning_rate: float,
+    num_steps: int,
+    weight_decay: float,
+) -> TrainedLinearProbe:
+    """Fit a probe and capture the normalization statistics needed at inference."""
+    train_labels = labels_to_indices(record.label for record in train_artifact.records)
+    mean, std = compute_standardization_stats(train_artifact.embeddings)
+    standardized_train_x = apply_standardization(train_artifact.embeddings, mean, std)
+    model = train_linear_probe(
+        standardized_train_x,
+        torch.from_numpy(train_labels),
+        seed=seed,
+        learning_rate=learning_rate,
+        num_steps=num_steps,
+        weight_decay=weight_decay,
+    )
+    return TrainedLinearProbe(model=model, mean=mean, std=std)
 
 
 def _summarize_split(
@@ -168,19 +225,35 @@ def evaluate_split(
         A dictionary containing probe metrics, baseline metrics, and
         metadata about the split (sizes, label counts, paper counts).
     """
-    train_labels, test_labels, train_x, test_x = _prepare_split_inputs(
+    trained_probe = fit_linear_probe(
         train_artifact,
-        test_artifact,
-    )
-    model = train_linear_probe(
-        train_x,
-        torch.from_numpy(train_labels),
         seed=seed,
         learning_rate=learning_rate,
         num_steps=num_steps,
         weight_decay=weight_decay,
     )
-    predictions = predict_labels(model, test_x)
+    return evaluate_trained_probe(
+        train_artifact,
+        test_artifact,
+        trained_probe=trained_probe,
+    )
+
+
+def evaluate_trained_probe(
+    train_artifact: DomainArtifact,
+    test_artifact: DomainArtifact,
+    *,
+    trained_probe: TrainedLinearProbe,
+) -> dict[str, Any]:
+    """Evaluate a previously trained probe on a split."""
+    train_labels = labels_to_indices(record.label for record in train_artifact.records)
+    test_labels = labels_to_indices(record.label for record in test_artifact.records)
+    test_x = apply_standardization(
+        test_artifact.embeddings,
+        trained_probe.mean,
+        trained_probe.std,
+    )
+    predictions = predict_labels(trained_probe.model, test_x)
     baseline = baseline_predictions(train_labels, len(test_labels))
     return _summarize_split(
         train_artifact=train_artifact,

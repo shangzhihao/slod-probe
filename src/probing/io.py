@@ -11,6 +11,8 @@ import torch
 from embedding.core import embed_texts, load_transformer_bundle
 from shared.schema import SpanRecord
 from shared.utils import SLoDSettings
+from .evaluation import TrainedLinearProbe, build_linear_probe
+from .metrics import LABELS
 
 from .controls import LengthControlStrategy, control_records
 from .split import DomainArtifact
@@ -122,6 +124,18 @@ def load_model_domain_artifacts(
 def controlled_artifact_path(results_dir: Path, model_slug: str, domain: str) -> Path:
     """Determine the cache path for a length-controlled embedding artifact."""
     return results_dir / "controlled_embeddings" / model_slug / f"{domain}.pt"
+
+
+def probe_model_path(
+    models_dir: Path,
+    *,
+    model_slug: str,
+    condition: str,
+    train_domain: str,
+    test_domain: str,
+) -> Path:
+    """Determine the path for a persisted linear probe."""
+    return models_dir / model_slug / condition / f"{train_domain}__{test_domain}.pt"
 
 
 def _artifact_to_domain_artifact(artifact: dict) -> DomainArtifact:
@@ -288,3 +302,54 @@ def load_or_build_controlled_artifact(
         strategy=strategy,
     )
     return controlled
+
+
+def save_probe_model(
+    path: Path,
+    *,
+    model_name: str,
+    model_slug: str,
+    condition: str,
+    train_domain: str,
+    test_domain: str,
+    controlled: bool,
+    control_strategy: LengthControlStrategy | None,
+    trained_probe: TrainedLinearProbe,
+) -> None:
+    """Persist a trained linear probe and its normalization statistics."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(
+        {
+            "model_name": model_name,
+            "model_slug": model_slug,
+            "condition": condition,
+            "train_domain": train_domain,
+            "test_domain": test_domain,
+            "controlled": controlled,
+            "control_strategy": control_strategy,
+            "label_order": LABELS,
+            "input_dim": trained_probe.mean.shape[1],
+            "mean": trained_probe.mean.detach().to(torch.float32).cpu(),
+            "std": trained_probe.std.detach().to(torch.float32).cpu(),
+            "state_dict": {
+                key: value.detach().to(torch.float32).cpu()
+                for key, value in trained_probe.model.state_dict().items()
+            },
+        },
+        path,
+    )
+
+
+def load_probe_model(path: Path) -> TrainedLinearProbe:
+    """Load a previously persisted linear probe."""
+    if not path.exists():
+        raise FileNotFoundError(f"missing probe model artifact: {path}")
+
+    artifact = torch.load(path, map_location="cpu", weights_only=False)
+    model = build_linear_probe(int(artifact["input_dim"]))
+    model.load_state_dict(artifact["state_dict"])
+    return TrainedLinearProbe(
+        model=model.eval(),
+        mean=artifact["mean"].detach().to(torch.float32).cpu(),
+        std=artifact["std"].detach().to(torch.float32).cpu(),
+    )

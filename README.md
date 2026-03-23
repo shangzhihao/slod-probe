@@ -18,6 +18,7 @@ The pipeline produces:
 - `data/spans/nlp.jsonl`
 - `data/spans/cv.jsonl`
 - `embeddings/<model_slug>/*.pt`
+- `models/<model_slug>/<condition>/*.pt`
 - `results/probe_results.json`
 - `results/probe_results.png`
 - `results/probe_class_f1.png`
@@ -50,7 +51,7 @@ matching rules, and balancing.
 The `embedding` section controls model selection, pooling, truncation, output
 directory, and the local Hugging Face cache directory.
 The `probe` section controls split and optimizer settings plus the results
-output directory.
+output directory and the persisted probe-model directory.
 The `pipeline` section stores shared execution settings such as batch size,
 control strategy, and shared runtime defaults.
 
@@ -114,7 +115,3 @@ Run the entrypoints as direct scripts, for example `python src/dataset.py`.
 - `src/probe.py` reads its probe settings from `config.toml`; the CLI
   is limited to the assignment-facing flags `--train`, `--eval`, and
   `--condition`.
-- `python src/probe.py --train --eval --condition in_domain` runs only
-  the in-domain probe.
-- `python src/probe.py --train --eval --condition all`
-  runs the full in-domain, cross-domain, and controlled result set.

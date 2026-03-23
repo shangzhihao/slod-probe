@@ -70,6 +70,7 @@ class ProbeSettings(BaseModel):
     num_steps: int
     weight_decay: float
     results_dir: Path
+    models_dir: Path = Path("models")
 
 
 DomainInferenceSettings = DatasetSettings.DomainInferenceSettings
