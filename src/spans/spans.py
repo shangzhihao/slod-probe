@@ -12,6 +12,77 @@ from shared.schema import DomainInferenceSettings, SectionRuleSettings, SpanReco
 from shared.utils import load_settings, read_jsonl_gz
 
 
+def _resolve_build_spans_inputs(
+    *,
+    target_domains: tuple[str, ...] | None,
+    seed: int | None,
+) -> tuple[tuple[str, ...], int]:
+    """Resolve optional build settings from the shared project config."""
+    dataset_settings = load_settings().dataset
+    resolved_domains = (
+        dataset_settings.domains if target_domains is None else target_domains
+    )
+    resolved_seed = dataset_settings.seed if seed is None else seed
+    return resolved_domains, resolved_seed
+
+
+def _collect_raw_spans(
+    raw_dir: Path,
+    *,
+    target_domains: tuple[str, ...],
+    domain_inference: DomainInferenceSettings | None,
+    section_rules: SectionRuleSettings | None,
+    intro_lead_paragraphs: int | None,
+) -> list[SpanRecord]:
+    """Read shard files and collect raw span records before finalization."""
+    metadata_index = load_metadata_index(raw_dir)
+    paper_paths = sorted(raw_dir.glob("papers_part_*.gz"))
+    spans: list[SpanRecord] = []
+
+    for path in paper_paths:
+        for record in read_jsonl_gz(path):
+            spans.extend(
+                collect_spans_from_paper(
+                    record,
+                    path.name,
+                    metadata_index,
+                    target_domains=target_domains,
+                    domain_inference=domain_inference,
+                    section_rules=section_rules,
+                    intro_lead_paragraphs=intro_lead_paragraphs,
+                )
+            )
+    return spans
+
+
+def _span_sort_key(span: SpanRecord) -> tuple[str, int, str, str, str, str]:
+    """Provide the stable ordering used for unbalanced output artifacts."""
+    return (
+        span.label,
+        span.paper_id,
+        span.source_file,
+        span.section_name,
+        span.source_kind,
+        span.text,
+    )
+
+
+def _finalize_spans(
+    spans: list[SpanRecord],
+    *,
+    balance: bool,
+    seed: int,
+) -> list[SpanRecord]:
+    """Apply deduping plus the chosen post-processing policy."""
+    deduped = dedupe_spans(spans)
+    if balance:
+        # Optional balancing happens after global deduping so duplicates do not skew counts.
+        return balance_spans(deduped, seed=seed)
+
+    deduped.sort(key=_span_sort_key)
+    return deduped
+
+
 def build_spans(
     raw_dir: Path,
     *,
@@ -45,41 +116,15 @@ def build_spans(
     Returns:
         A list of SpanRecord objects extracted and processed from the shards.
     """
-    dataset_settings = load_settings().dataset
-    target_domains = (
-        dataset_settings.domains if target_domains is None else target_domains
+    target_domains, seed = _resolve_build_spans_inputs(
+        target_domains=target_domains,
+        seed=seed,
     )
-    seed = dataset_settings.seed if seed is None else seed
-    metadata_index = load_metadata_index(raw_dir)
-    paper_paths = sorted(raw_dir.glob("papers_part_*.gz"))
-    spans: list[SpanRecord] = []
-
-    for path in paper_paths:
-        for record in read_jsonl_gz(path):
-            spans.extend(
-                collect_spans_from_paper(
-                    record,
-                    path.name,
-                    metadata_index,
-                    target_domains=target_domains,
-                    domain_inference=domain_inference,
-                    section_rules=section_rules,
-                    intro_lead_paragraphs=intro_lead_paragraphs,
-                )
-            )
-
-    spans = dedupe_spans(spans)
-    if balance:
-        # Optional balancing happens after global deduping so duplicates do not skew counts.
-        return balance_spans(spans, seed=seed)
-    spans.sort(
-        key=lambda span: (
-            span.label,
-            span.paper_id,
-            span.source_file,
-            span.section_name,
-            span.source_kind,
-            span.text,
-        )
+    spans = _collect_raw_spans(
+        raw_dir,
+        target_domains=target_domains,
+        domain_inference=domain_inference,
+        section_rules=section_rules,
+        intro_lead_paragraphs=intro_lead_paragraphs,
     )
-    return spans
+    return _finalize_spans(spans, balance=balance, seed=seed)
