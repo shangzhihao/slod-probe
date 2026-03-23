@@ -47,28 +47,6 @@ def apply_standardization(
     return (x - mean) / std
 
 
-def standardize_embeddings(
-    train_x: torch.Tensor, test_x: torch.Tensor
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Z-score normalize embeddings using training set statistics.
-
-    Normalization prevents larger embedding dimensions from dominating
-    the linear probe's weights and ensures consistency across different
-    models. We use train statistics to avoid data leakage.
-
-    Args:
-        train_x: Training embedding tensor (count, dim).
-        test_x: Test embedding tensor (count, dim).
-
-    Returns:
-        A tuple of (standardized_train_x, standardized_test_x).
-    """
-    mean, std = compute_standardization_stats(train_x)
-    return apply_standardization(train_x, mean, std), apply_standardization(
-        test_x, mean, std
-    )
-
-
 def build_linear_probe(input_dim: int) -> nn.Linear:
     """Construct an untrained linear classifier for probe persistence/loading."""
     return nn.Linear(input_dim, len(LABELS))
