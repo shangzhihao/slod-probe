@@ -54,20 +54,12 @@ output directory.
 The `pipeline` section stores shared execution settings such as batch size,
 control strategy, and shared runtime defaults.
 
-## Installation
+## Reproduce the pipeline (preferred)
 
 ```bash
-# preferred
+# install virtual enviroment
 uv sync
 
-# or with venv + pip
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-## Reproduce the pipeline
-```bash
 # Cached intermediate artifacts are included,
 # so you can run the probes directly.
 uv run python src/probe.py --train --eval --condition all
@@ -89,6 +81,11 @@ uv run python src/probe.py --train --eval --condition in_domain
 ## Reproduce the pipeline (without uv)
 
 ```bash
+# install virtual enviroment
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
 # Cached intermediate artifacts are included,
 # so you can run the probes directly.
 python src/probe.py --train --eval --condition all
