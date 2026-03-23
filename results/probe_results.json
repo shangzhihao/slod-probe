@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-03-23T11:36:11.053864+00:00",
+  "generated_at": "2026-03-23T12:15:50.422941+00:00",
   "config": {
     "dataset": {
       "raw_dir": "data/raw",
-      "output_dir": "/Users/shang/Development/slod-probe/data/spans",
+      "output_dir": "data/spans",
       "domains": [
         "nlp",
         "cv"
@@ -148,7 +148,7 @@
       "pooling": "mean",
       "max_tokens": 80,
       "seed": 13,
-      "output_dir": "/Users/shang/Development/slod-probe/embeddings",
+      "output_dir": "embeddings",
       "cache_dir": ".cache/hf"
     },
     "pipeline": {
@@ -162,11 +162,11 @@
       "learning_rate": 0.05,
       "num_steps": 400,
       "weight_decay": 0.0001,
-      "results_dir": "/Users/shang/Development/slod-probe/results"
+      "results_dir": "results"
     }
   },
-  "embeddings_dir": "/Users/shang/Development/slod-probe/embeddings",
-  "results_dir": "/Users/shang/Development/slod-probe/results",
+  "embeddings_dir": "embeddings",
+  "results_dir": "results",
   "condition": "all",
   "runs": [
     {
