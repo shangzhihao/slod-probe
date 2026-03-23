@@ -116,7 +116,8 @@ def collect_spans_from_paper(
     Returns:
         A list of SpanRecord objects extracted from the paper.
     """
-    section_rules = _resolve_section_rules(section_rules)
+    if section_rules is None:
+        section_rules = load_settings().dataset.section_rules
     prepared = _prepare_paper_extraction(
         record,
         source_file,
@@ -128,7 +129,8 @@ def collect_spans_from_paper(
     if prepared is None:
         return []
 
-    intro_lead_paragraphs = _resolve_intro_lead_paragraphs(intro_lead_paragraphs)
+    if intro_lead_paragraphs is None:
+        intro_lead_paragraphs = load_settings().dataset.intro_lead_paragraphs
     spans = _collect_front_matter_spans(prepared)
     if not prepared.paragraph_spans or not prepared.section_spans:
         return dedupe_spans(spans)
@@ -189,22 +191,6 @@ def _prepare_paper_extraction(
         section_spans=section_spans,
         paragraph_spans=paragraph_spans,
     )
-
-
-def _resolve_intro_lead_paragraphs(intro_lead_paragraphs: int | None) -> int:
-    """Determine the number of lead paragraphs to use from settings if not provided."""
-    if intro_lead_paragraphs is not None:
-        return intro_lead_paragraphs
-    return load_settings().dataset.intro_lead_paragraphs
-
-
-def _resolve_section_rules(
-    section_rules: SectionRuleSettings | None,
-) -> SectionRuleSettings:
-    """Determine section-matching rules from settings if not provided."""
-    if section_rules is not None:
-        return section_rules
-    return load_settings().dataset.section_rules
 
 
 def _collect_front_matter_spans(prepared: PreparedPaperExtraction) -> list[SpanRecord]:
