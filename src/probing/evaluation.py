@@ -104,6 +104,45 @@ def predict_labels(model: nn.Module, x: torch.Tensor) -> np.ndarray:
         return logits.argmax(dim=1).cpu().numpy()
 
 
+def _prepare_split_inputs(
+    train_artifact: DomainArtifact,
+    test_artifact: DomainArtifact,
+) -> tuple[np.ndarray, np.ndarray, torch.Tensor, torch.Tensor]:
+    """Prepare labels and standardized embeddings for one evaluation split."""
+    train_labels = labels_to_indices(record.label for record in train_artifact.records)
+    test_labels = labels_to_indices(record.label for record in test_artifact.records)
+    train_x, test_x = standardize_embeddings(
+        train_artifact.embeddings, test_artifact.embeddings
+    )
+    return train_labels, test_labels, train_x, test_x
+
+
+def _summarize_split(
+    *,
+    train_artifact: DomainArtifact,
+    test_artifact: DomainArtifact,
+    train_labels: np.ndarray,
+    test_labels: np.ndarray,
+    predictions: np.ndarray,
+    baseline: np.ndarray,
+) -> dict[str, Any]:
+    """Assemble the reporting payload for one evaluated split."""
+    return {
+        "probe": classification_metrics(test_labels, predictions),
+        "baseline": classification_metrics(test_labels, baseline),
+        "train_size": len(train_labels),
+        "test_size": len(test_labels),
+        "train_papers": len({record.paper_id for record in train_artifact.records}),
+        "test_papers": len({record.paper_id for record in test_artifact.records}),
+        "train_label_counts": label_counts(
+            record.label for record in train_artifact.records
+        ),
+        "test_label_counts": label_counts(
+            record.label for record in test_artifact.records
+        ),
+    }
+
+
 def evaluate_split(
     train_artifact: DomainArtifact,
     test_artifact: DomainArtifact,
@@ -129,10 +168,9 @@ def evaluate_split(
         A dictionary containing probe metrics, baseline metrics, and
         metadata about the split (sizes, label counts, paper counts).
     """
-    train_labels = labels_to_indices(record.label for record in train_artifact.records)
-    test_labels = labels_to_indices(record.label for record in test_artifact.records)
-    train_x, test_x = standardize_embeddings(
-        train_artifact.embeddings, test_artifact.embeddings
+    train_labels, test_labels, train_x, test_x = _prepare_split_inputs(
+        train_artifact,
+        test_artifact,
     )
     model = train_linear_probe(
         train_x,
@@ -144,17 +182,11 @@ def evaluate_split(
     )
     predictions = predict_labels(model, test_x)
     baseline = baseline_predictions(train_labels, len(test_labels))
-    return {
-        "probe": classification_metrics(test_labels, predictions),
-        "baseline": classification_metrics(test_labels, baseline),
-        "train_size": len(train_labels),
-        "test_size": len(test_labels),
-        "train_papers": len({record.paper_id for record in train_artifact.records}),
-        "test_papers": len({record.paper_id for record in test_artifact.records}),
-        "train_label_counts": label_counts(
-            record.label for record in train_artifact.records
-        ),
-        "test_label_counts": label_counts(
-            record.label for record in test_artifact.records
-        ),
-    }
+    return _summarize_split(
+        train_artifact=train_artifact,
+        test_artifact=test_artifact,
+        train_labels=train_labels,
+        test_labels=test_labels,
+        predictions=predictions,
+        baseline=baseline,
+    )

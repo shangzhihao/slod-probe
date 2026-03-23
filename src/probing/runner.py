@@ -16,6 +16,7 @@ from .io import load_model_domain_artifacts, load_or_build_controlled_artifact
 from .split import DomainArtifact, split_paper_ids, subset_artifact
 
 type DomainSplit = dict[str, Any]
+type RunProbesInputs = tuple[Path, Path, int, LengthControlStrategy]
 
 
 def _build_run_record(
@@ -280,6 +281,80 @@ def save_probe_results(
     return str(results_path)
 
 
+def _resolve_run_probes_inputs(
+    settings: SLoDSettings,
+    *,
+    embeddings_dir: Path | None,
+    results_dir: Path | None,
+    batch_size: int | None,
+    control_strategy: LengthControlStrategy | None,
+) -> RunProbesInputs:
+    """Resolve runtime overrides for the probe pipeline."""
+    resolved_batch_size = (
+        settings.pipeline.batch_size if batch_size is None else batch_size
+    )
+    resolved_embeddings_dir = (
+        settings.embedding.output_dir if embeddings_dir is None else embeddings_dir
+    )
+    resolved_results_dir = (
+        settings.probe.results_dir if results_dir is None else results_dir
+    )
+    resolved_control_strategy = (
+        settings.pipeline.control_strategy
+        if control_strategy is None
+        else control_strategy
+    )
+    return (
+        resolved_embeddings_dir,
+        resolved_results_dir,
+        resolved_batch_size,
+        resolved_control_strategy,
+    )
+
+
+def _validate_probe_condition(condition: str) -> None:
+    """Reject unsupported experiment families early."""
+    if condition not in {"all", "in_domain"}:
+        raise ValueError(f"unsupported condition: {condition}")
+
+
+def _run_model_probes(
+    *,
+    model_name: str,
+    settings: SLoDSettings,
+    embeddings_dir: Path,
+    results_dir: Path,
+    batch_size: int,
+    control_strategy: LengthControlStrategy,
+    condition: str,
+) -> list[dict[str, Any]]:
+    """Run the requested probe family for a single embedding model."""
+    model_slug = slugify(model_name)
+    print(f"probing model {model_name} -> {model_slug}", flush=True)
+    artifacts = load_model_domain_artifacts(
+        embeddings_dir, model_slug, settings.dataset.domains
+    )
+    domain_splits = _build_domain_splits(artifacts, settings)
+
+    if condition == "in_domain":
+        return run_in_domain(
+            model_name=model_name,
+            model_slug=model_slug,
+            domain_splits=domain_splits,
+            settings=settings,
+        )
+    return run_all(
+        model_name=model_name,
+        model_slug=model_slug,
+        artifacts=artifacts,
+        domain_splits=domain_splits,
+        settings=settings,
+        results_dir=results_dir,
+        batch_size=batch_size,
+        control_strategy=control_strategy,
+    )
+
+
 def run_probes(
     settings: SLoDSettings,
     *,
@@ -290,51 +365,34 @@ def run_probes(
     condition: str = "all",
 ) -> dict[str, Any]:
     """Train and evaluate configured probe conditions for every embedding model."""
-    batch_size = settings.pipeline.batch_size if batch_size is None else batch_size
-    embeddings_dir = (
-        settings.embedding.output_dir if embeddings_dir is None else embeddings_dir
+    (
+        embeddings_dir,
+        results_dir,
+        batch_size,
+        control_strategy,
+    ) = _resolve_run_probes_inputs(
+        settings,
+        embeddings_dir=embeddings_dir,
+        results_dir=results_dir,
+        batch_size=batch_size,
+        control_strategy=control_strategy,
     )
-    results_dir = settings.probe.results_dir if results_dir is None else results_dir
-    control_strategy = (
-        settings.pipeline.control_strategy
-        if control_strategy is None
-        else control_strategy
-    )
-    if condition not in {"all", "in_domain"}:
-        raise ValueError(f"unsupported condition: {condition}")
+    _validate_probe_condition(condition)
     results_dir.mkdir(parents=True, exist_ok=True)
     runs: list[dict[str, Any]] = []
 
     for model_name in settings.embedding.model_name:
-        model_slug = slugify(model_name)
-        print(f"probing model {model_name} -> {model_slug}", flush=True)
-        artifacts = load_model_domain_artifacts(
-            embeddings_dir, model_slug, settings.dataset.domains
+        runs.extend(
+            _run_model_probes(
+                model_name=model_name,
+                settings=settings,
+                embeddings_dir=embeddings_dir,
+                results_dir=results_dir,
+                batch_size=batch_size,
+                control_strategy=control_strategy,
+                condition=condition,
+            )
         )
-        domain_splits = _build_domain_splits(artifacts, settings)
-
-        if condition == "in_domain":
-            runs.extend(
-                run_in_domain(
-                    model_name=model_name,
-                    model_slug=model_slug,
-                    domain_splits=domain_splits,
-                    settings=settings,
-                )
-            )
-        else:
-            runs.extend(
-                run_all(
-                    model_name=model_name,
-                    model_slug=model_slug,
-                    artifacts=artifacts,
-                    domain_splits=domain_splits,
-                    settings=settings,
-                    results_dir=results_dir,
-                    batch_size=batch_size,
-                    control_strategy=control_strategy,
-                )
-            )
 
     results_path = save_probe_results(
         results_dir, settings, embeddings_dir, condition, runs
