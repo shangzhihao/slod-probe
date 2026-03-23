@@ -138,19 +138,6 @@ def predict_labels(model: nn.Module, x: torch.Tensor) -> np.ndarray:
         return logits.argmax(dim=1).cpu().numpy()
 
 
-def _prepare_split_inputs(
-    train_artifact: DomainArtifact,
-    test_artifact: DomainArtifact,
-) -> tuple[np.ndarray, np.ndarray, torch.Tensor, torch.Tensor]:
-    """Prepare labels and standardized embeddings for one evaluation split."""
-    train_labels = labels_to_indices(record.label for record in train_artifact.records)
-    test_labels = labels_to_indices(record.label for record in test_artifact.records)
-    train_x, test_x = standardize_embeddings(
-        train_artifact.embeddings, test_artifact.embeddings
-    )
-    return train_labels, test_labels, train_x, test_x
-
-
 def fit_linear_probe(
     train_artifact: DomainArtifact,
     *,
@@ -198,45 +185,6 @@ def _summarize_split(
             record.label for record in test_artifact.records
         ),
     }
-
-
-def evaluate_split(
-    train_artifact: DomainArtifact,
-    test_artifact: DomainArtifact,
-    *,
-    seed: int,
-    learning_rate: float,
-    num_steps: int,
-    weight_decay: float,
-) -> dict[str, Any]:
-    """Train a probe on the training artifact and evaluate it on the test set.
-
-    Also computes a majority-class baseline for comparison.
-
-    Args:
-        train_artifact: Training records and embeddings.
-        test_artifact: Evaluation records and embeddings.
-        seed: Random seed for the probe.
-        learning_rate: LR for AdamW.
-        num_steps: Training steps.
-        weight_decay: L2 regularization strength.
-
-    Returns:
-        A dictionary containing probe metrics, baseline metrics, and
-        metadata about the split (sizes, label counts, paper counts).
-    """
-    trained_probe = fit_linear_probe(
-        train_artifact,
-        seed=seed,
-        learning_rate=learning_rate,
-        num_steps=num_steps,
-        weight_decay=weight_decay,
-    )
-    return evaluate_trained_probe(
-        train_artifact,
-        test_artifact,
-        trained_probe=trained_probe,
-    )
 
 
 def evaluate_trained_probe(
