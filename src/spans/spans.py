@@ -12,20 +12,6 @@ from shared.schema import DomainInferenceSettings, SectionRuleSettings, SpanReco
 from shared.utils import load_settings, read_jsonl_gz
 
 
-def _resolve_build_spans_inputs(
-    *,
-    target_domains: tuple[str, ...] | None,
-    seed: int | None,
-) -> tuple[tuple[str, ...], int]:
-    """Resolve optional build settings from the shared project config."""
-    dataset_settings = load_settings().dataset
-    resolved_domains = (
-        dataset_settings.domains if target_domains is None else target_domains
-    )
-    resolved_seed = dataset_settings.seed if seed is None else seed
-    return resolved_domains, resolved_seed
-
-
 def _collect_raw_spans(
     raw_dir: Path,
     *,
@@ -86,12 +72,7 @@ def _finalize_spans(
 def build_spans(
     raw_dir: Path,
     *,
-    target_domains: tuple[str, ...] | None = None,
     balance: bool = True,
-    seed: int | None = None,
-    domain_inference: DomainInferenceSettings | None = None,
-    section_rules: SectionRuleSettings | None = None,
-    intro_lead_paragraphs: int | None = None,
 ) -> list[SpanRecord]:
     """Walk the raw shard files and materialize weakly labeled span records.
 
@@ -101,30 +82,18 @@ def build_spans(
 
     Args:
         raw_dir: Path to the directory containing raw paper shards (papers_part_*.gz).
-        target_domains: Tuple of domain names to include (e.g., ("nlp", "cv")).
-            If None, defaults to the domains specified in the settings.
         balance: Whether to balance the spans by label (macro, meso, micro)
             after extraction.
-        seed: Random seed for balancing. If None, defaults to the settings seed.
-        domain_inference: Settings for inferring the domain of a paper.
-            If None, uses defaults from load_settings().
-        section_rules: Rules for identifying section types (intro, micro, etc.).
-            If None, uses defaults from load_settings().
-        intro_lead_paragraphs: Number of lead paragraphs in the introduction to
-            treat as macro labels. If None, uses defaults from load_settings().
 
     Returns:
         A list of SpanRecord objects extracted and processed from the shards.
     """
-    target_domains, seed = _resolve_build_spans_inputs(
-        target_domains=target_domains,
-        seed=seed,
-    )
+    dataset_settings = load_settings().dataset
     spans = _collect_raw_spans(
         raw_dir,
-        target_domains=target_domains,
-        domain_inference=domain_inference,
-        section_rules=section_rules,
-        intro_lead_paragraphs=intro_lead_paragraphs,
+        target_domains=dataset_settings.domains,
+        domain_inference=dataset_settings.domain_inference,
+        section_rules=dataset_settings.section_rules,
+        intro_lead_paragraphs=dataset_settings.intro_lead_paragraphs,
     )
-    return _finalize_spans(spans, balance=balance, seed=seed)
+    return _finalize_spans(spans, balance=balance, seed=dataset_settings.seed)

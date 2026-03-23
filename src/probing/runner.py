@@ -16,7 +16,6 @@ from .io import load_model_domain_artifacts, load_or_build_controlled_artifact
 from .split import DomainArtifact, split_paper_ids, subset_artifact
 
 type DomainSplit = dict[str, Any]
-type RunProbesInputs = tuple[Path, Path, int, LengthControlStrategy]
 
 
 def _build_run_record(
@@ -281,37 +280,6 @@ def save_probe_results(
     return str(results_path)
 
 
-def _resolve_run_probes_inputs(
-    settings: SLoDSettings,
-    *,
-    embeddings_dir: Path | None,
-    results_dir: Path | None,
-    batch_size: int | None,
-    control_strategy: LengthControlStrategy | None,
-) -> RunProbesInputs:
-    """Resolve runtime overrides for the probe pipeline."""
-    resolved_batch_size = (
-        settings.pipeline.batch_size if batch_size is None else batch_size
-    )
-    resolved_embeddings_dir = (
-        settings.embedding.output_dir if embeddings_dir is None else embeddings_dir
-    )
-    resolved_results_dir = (
-        settings.probe.results_dir if results_dir is None else results_dir
-    )
-    resolved_control_strategy = (
-        settings.pipeline.control_strategy
-        if control_strategy is None
-        else control_strategy
-    )
-    return (
-        resolved_embeddings_dir,
-        resolved_results_dir,
-        resolved_batch_size,
-        resolved_control_strategy,
-    )
-
-
 def _validate_probe_condition(condition: str) -> None:
     """Reject unsupported experiment families early."""
     if condition not in {"all", "in_domain"}:
@@ -358,26 +326,14 @@ def _run_model_probes(
 def run_probes(
     settings: SLoDSettings,
     *,
-    embeddings_dir: Path | None = None,
-    results_dir: Path | None = None,
-    batch_size: int | None = None,
-    control_strategy: LengthControlStrategy | None = None,
     condition: str = "all",
 ) -> dict[str, Any]:
     """Train and evaluate configured probe conditions for every embedding model."""
-    (
-        embeddings_dir,
-        results_dir,
-        batch_size,
-        control_strategy,
-    ) = _resolve_run_probes_inputs(
-        settings,
-        embeddings_dir=embeddings_dir,
-        results_dir=results_dir,
-        batch_size=batch_size,
-        control_strategy=control_strategy,
-    )
     _validate_probe_condition(condition)
+    embeddings_dir = settings.embedding.output_dir
+    results_dir = settings.probe.results_dir
+    batch_size = settings.pipeline.batch_size
+    control_strategy = settings.pipeline.control_strategy
     results_dir.mkdir(parents=True, exist_ok=True)
     runs: list[dict[str, Any]] = []
 

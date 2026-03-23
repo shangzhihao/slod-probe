@@ -25,14 +25,7 @@ def main() -> int:
     raw_dir = settings.dataset.raw_dir
     output_dir = settings.dataset.output_dir
     target_domains = tuple(settings.dataset.domains)
-    spans = build_spans(
-        raw_dir,
-        target_domains=target_domains,
-        balance=False,
-        domain_inference=settings.dataset.domain_inference,
-        section_rules=settings.dataset.section_rules,
-        intro_lead_paragraphs=settings.dataset.intro_lead_paragraphs,
-    )
+    spans = build_spans(raw_dir, balance=False)
     if settings.dataset.balance:
         balanced_by_domain = balance_spans_grouped(
             spans,

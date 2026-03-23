@@ -19,24 +19,6 @@ from shared.schema import SpanRecord
 from shared.utils import SLoDSettings, load_settings, slugify
 
 
-def _resolve_embedding_inputs(
-    settings: SLoDSettings,
-    *,
-    spans_dir: Path | None,
-    output_dir: Path | None,
-    batch_size: int | None,
-) -> tuple[Path, Path, int]:
-    """Resolve optional embedding pipeline overrides from project settings."""
-    resolved_batch_size = (
-        settings.pipeline.batch_size if batch_size is None else batch_size
-    )
-    resolved_spans_dir = settings.dataset.output_dir if spans_dir is None else spans_dir
-    resolved_output_dir = (
-        settings.embedding.output_dir if output_dir is None else output_dir
-    )
-    return resolved_spans_dir, resolved_output_dir, resolved_batch_size
-
-
 def _embed_domain_records(
     records: list[SpanRecord],
     *,
@@ -136,35 +118,17 @@ def _embed_configured_models(
 
 def build_embeddings(
     settings: SLoDSettings,
-    *,
-    spans_dir: Path | None = None,
-    output_dir: Path | None = None,
-    batch_size: int | None = None,
 ) -> dict[str, dict[str, Path]]:
-    """Embed each configured domain split for every configured backbone model.
-
-    Args:
-        settings: Project configuration settings.
-        spans_dir: Directory containing input span JSONL files.
-        output_dir: Parent directory where embedding artifacts should be saved.
-        batch_size: Minibatch size for transformer inference.
-
-    Returns:
-        A nested dictionary mapping model names and domains to artifact paths.
-    """
-    spans_dir, output_dir, batch_size = _resolve_embedding_inputs(
-        settings,
-        spans_dir=spans_dir,
-        output_dir=output_dir,
-        batch_size=batch_size,
-    )
+    """Embed each configured domain split for every configured backbone model."""
     configure_hf_cache(settings.embedding.cache_dir)
-    domain_spans = load_domain_spans(spans_dir, settings.dataset.domains)
+    domain_spans = load_domain_spans(
+        settings.dataset.output_dir, settings.dataset.domains
+    )
     return _embed_configured_models(
         settings,
         domain_spans=domain_spans,
-        output_dir=output_dir,
-        batch_size=batch_size,
+        output_dir=settings.embedding.output_dir,
+        batch_size=settings.pipeline.batch_size,
     )
 
 
@@ -175,15 +139,7 @@ def main() -> int:
     to generate vector representations, which are saved as .pt artifacts.
     """
     settings = load_settings()
-    spans_dir = settings.dataset.output_dir
-    output_dir = settings.embedding.output_dir
-    batch_size = settings.pipeline.batch_size
-    outputs = build_embeddings(
-        settings,
-        spans_dir=spans_dir,
-        output_dir=output_dir,
-        batch_size=batch_size,
-    )
+    outputs = build_embeddings(settings)
     print(
         json.dumps(
             {
@@ -195,8 +151,8 @@ def main() -> int:
                 },
                 "models": list(settings.embedding.model_name),
                 "domains": list(settings.dataset.domains),
-                "spans_dir": str(spans_dir),
-                "output_dir": str(output_dir),
+                "spans_dir": str(settings.dataset.output_dir),
+                "output_dir": str(settings.embedding.output_dir),
             },
             ensure_ascii=True,
         )

@@ -116,6 +116,7 @@ def collect_spans_from_paper(
     Returns:
         A list of SpanRecord objects extracted from the paper.
     """
+    section_rules = _resolve_section_rules(section_rules)
     prepared = _prepare_paper_extraction(
         record,
         source_file,
@@ -149,7 +150,7 @@ def _prepare_paper_extraction(
     *,
     target_domains: tuple[str, ...],
     domain_inference: DomainInferenceSettings | None,
-    section_rules: SectionRuleSettings | None,
+    section_rules: SectionRuleSettings,
 ) -> PreparedPaperExtraction | None:
     """Validate paper domain and extract base annotation spans."""
     paper_id = int(record["corpusid"])
@@ -197,6 +198,15 @@ def _resolve_intro_lead_paragraphs(intro_lead_paragraphs: int | None) -> int:
     return load_settings().dataset.intro_lead_paragraphs
 
 
+def _resolve_section_rules(
+    section_rules: SectionRuleSettings | None,
+) -> SectionRuleSettings:
+    """Determine section-matching rules from settings if not provided."""
+    if section_rules is not None:
+        return section_rules
+    return load_settings().dataset.section_rules
+
+
 def _collect_front_matter_spans(prepared: PreparedPaperExtraction) -> list[SpanRecord]:
     """Extract macro spans from the paper title and abstract."""
     spans: list[SpanRecord] = []
@@ -236,7 +246,7 @@ def _assign_paragraph_label(
     *,
     section_name: str,
     paragraph_index: int,
-    section_rules: SectionRuleSettings | None,
+    section_rules: SectionRuleSettings,
     intro_lead_paragraphs: int,
 ) -> tuple[str, str] | None:
     """Determine the weak label and source kind for a paragraph based on its section."""
