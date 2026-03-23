@@ -75,6 +75,13 @@ def controlled_cache_matches(
     )
 
 
+def parse_domain_artifact(artifact: dict) -> DomainArtifact:
+    """Convert a serialized artifact payload into the standard container type."""
+    records = [SpanRecord.model_validate(record) for record in artifact["records"]]
+    embeddings = artifact["embeddings"].detach().to(torch.float32).cpu()
+    return DomainArtifact(records=records, embeddings=embeddings)
+
+
 def load_embedding_artifact(path: Path) -> DomainArtifact:
     """Load a PyTorch embedding artifact and convert components to standard types.
 
@@ -88,9 +95,7 @@ def load_embedding_artifact(path: Path) -> DomainArtifact:
         A DomainArtifact container.
     """
     artifact = torch.load(path, map_location="cpu", weights_only=False)
-    records = [SpanRecord.model_validate(record) for record in artifact["records"]]
-    embeddings = artifact["embeddings"].detach().to(torch.float32).cpu()
-    return DomainArtifact(records=records, embeddings=embeddings)
+    return parse_domain_artifact(artifact)
 
 
 def load_model_domain_artifacts(
@@ -138,13 +143,6 @@ def probe_model_path(
     return models_dir / model_slug / condition / f"{train_domain}__{test_domain}.pt"
 
 
-def _artifact_to_domain_artifact(artifact: dict) -> DomainArtifact:
-    """Convert a serialized artifact payload into the standard container type."""
-    records = [SpanRecord.model_validate(record) for record in artifact["records"]]
-    embeddings = artifact["embeddings"].detach().to(torch.float32).cpu()
-    return DomainArtifact(records=records, embeddings=embeddings)
-
-
 def _load_cached_controlled_artifact(
     cache_path: Path,
     *,
@@ -164,7 +162,7 @@ def _load_cached_controlled_artifact(
         strategy=strategy,
     ):
         return None
-    return _artifact_to_domain_artifact(artifact)
+    return parse_domain_artifact(artifact)
 
 
 def _build_controlled_artifact(
