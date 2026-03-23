@@ -15,7 +15,7 @@ Frozen embeddings linearly separate macro-, meso-, and micro-level scientific te
   - `allenai/scibert_scivocab_uncased`
   - `BAAI/bge-small-en-v1.5`
 - The probe is a linear classifier with paper-level splits in [`src/probe.py`](../src/probe.py).
-- ## Evaluation covers all required conditions: in-domain, cross-domain, and length-controlled in-domain.
+- Evaluation covers all required conditions: in-domain, cross-domain, and length-controlled in-domain.
 
 ### 1.1 Dataset Shape
 
@@ -53,13 +53,11 @@ The full metrics are saved in [`results/probe_results.json`](../results/probe_re
 
 Three patterns matter most.
 
-First, SciBERT is strongest on every condition. The gain is clearest on CV in-domain testing, where SciBERT reaches 0.656 macro F1 versus 0.582 for BGE-small.
+1. SciBERT is strongest on every condition. The gain is clearest on CV in-domain testing, where SciBERT reaches 0.656 macro F1 versus 0.582 for BGE-small. That pattern is plausible because SciBERT was pretrained for scientific language, so it is more likely to preserve discourse and genre cues that align with section-level abstraction. BGE-small is still competitive, but its weaker controlled and cross-domain performance suggests that the SLoD signal is exposed less cleanly in its embedding space.
 
-That pattern is plausible because SciBERT was pretrained for scientific language, so it is more likely to preserve discourse and genre cues that align with section-level abstraction. BGE-small is still competitive, but its weaker controlled and cross-domain performance suggests that the SLoD signal is exposed less cleanly in its embedding space.
+2. cross-domain transfer is weaker than in-domain performance but still clearly above the majority baseline. That means some SLoD signal generalizes across NLP and CV, but the embedding spaces still retain domain-sensitive structure. The drop is modest rather than catastrophic, which argues against the probe relying only on narrow topic vocabulary from one field.
 
-Second, cross-domain transfer is weaker than in-domain performance but still clearly above the majority baseline. That means some SLoD signal generalizes across NLP and CV, but the embedding spaces still retain domain-sensitive structure. The drop is modest rather than catastrophic, which argues against the probe relying only on narrow topic vocabulary from one field.
-
-Third, the length-controlled condition lowers scores, but not catastrophically. SciBERT drops from 0.612 to 0.601 on NLP and from 0.656 to 0.597 on CV. BGE-small drops more clearly, from 0.589 to 0.533 on NLP and from 0.582 to 0.538 on CV. The result is that length matters, but it does not fully explain probe success. The stronger degradation on CV also suggests that some of the CV signal is tied more closely to stylistic regularities such as paragraph length and layout conventions.
+3. the length-controlled condition lowers scores, but not catastrophically. SciBERT drops from 0.612 to 0.601 on NLP and from 0.656 to 0.597 on CV. BGE-small drops more clearly, from 0.589 to 0.533 on NLP and from 0.582 to 0.538 on CV. The result is that length matters, but it does not fully explain probe success. The stronger degradation on CV also suggests that some of the CV signal is tied more closely to stylistic regularities such as paragraph length and layout conventions.
 
 ### 2.1 Per-Class Precision and Recall
 
@@ -105,7 +103,8 @@ The examples below come from the current SciBERT in-domain NLP split.
 
 Two failure modes are especially common.
 
-First, conclusion paragraphs sometimes read like section leads rather than global summaries, so `macro` can drift into `meso`. Second, detailed evaluation prose often mixes local results with broader interpretation, which makes `micro` and `meso` hard to separate. These are plausible semantic ambiguities rather than obvious label noise alone.
+1. conclusion paragraphs sometimes read like section leads rather than global summaries, so `macro` can drift into `meso`.
+2. detailed evaluation prose often mixes local results with broader interpretation, which makes `micro` and `meso` hard to separate. These are plausible semantic ambiguities rather than obvious label noise alone.
 
 There is also a smaller class of failures driven by weak-label roughness. Some section headers are unusual, formula-like, or dataset-specific, and those make the section-role heuristic less reliable. In those cases, the probe may be wrong, but the label itself is not fully clean either.
 
