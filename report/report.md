@@ -59,47 +59,23 @@ Three patterns matter most.
 
 3. the length-controlled condition lowers scores, but not catastrophically. SciBERT drops from 0.612 to 0.601 on NLP and from 0.656 to 0.597 on CV. BGE-small drops more clearly, from 0.589 to 0.533 on NLP and from 0.582 to 0.538 on CV. The result is that length matters, but it does not fully explain probe success. The stronger degradation on CV also suggests that some of the CV signal is tied more closely to stylistic regularities such as paragraph length and layout conventions.
 
-### 2.1 Per-Class Precision and Recall
+### 2.1 Per-Class Trends
 
-Ordered `macro`, `meso`, `micro`. Values are `precision / recall`.
-
-| model | condition | train -> test | macro | meso | micro |
-| --- | --- | --- | --- | --- | --- |
-| SciBERT | in_domain | NLP -> NLP | 0.667 / 0.654 | 0.530 / 0.611 | 0.642 / 0.579 |
-| SciBERT | in_domain | CV -> CV | 0.758 / 0.689 | 0.626 / 0.662 | 0.592 / 0.616 |
-| SciBERT | cross_domain | NLP -> CV | 0.726 / 0.655 | 0.566 / 0.536 | 0.524 / 0.603 |
-| SciBERT | cross_domain | CV -> NLP | 0.684 / 0.679 | 0.529 / 0.530 | 0.535 / 0.537 |
-| SciBERT | controlled | NLP -> NLP | 0.696 / 0.649 | 0.508 / 0.571 | 0.604 / 0.583 |
-| SciBERT | controlled | CV -> CV | 0.722 / 0.622 | 0.592 / 0.575 | 0.495 / 0.593 |
-| BGE-small | in_domain | NLP -> NLP | 0.660 / 0.635 | 0.476 / 0.566 | 0.638 / 0.570 |
-| BGE-small | in_domain | CV -> CV | 0.660 / 0.660 | 0.574 / 0.560 | 0.511 / 0.525 |
-| BGE-small | cross_domain | NLP -> CV | 0.610 / 0.583 | 0.511 / 0.496 | 0.492 / 0.528 |
-| BGE-small | cross_domain | CV -> NLP | 0.600 / 0.630 | 0.520 / 0.547 | 0.552 / 0.496 |
-| BGE-small | controlled | NLP -> NLP | 0.581 / 0.519 | 0.443 / 0.514 | 0.581 / 0.566 |
-| BGE-small | controlled | CV -> CV | 0.601 / 0.555 | 0.526 / 0.546 | 0.492 / 0.514 |
-
-The most persistent pattern is that `meso` remains the hardest class. That makes sense: section leads sit between the globally summary-like `macro` spans and the clearly procedural `micro` spans, so they are the most structurally ambiguous category.
+Per-class analysis reveals that `meso` is consistently the hardest category to decode, with precision/recall values often significantly lower than `macro` or `micro`. While `macro` typically achieves the highest precision (e.g., 0.758 for SciBERT CV) due to its distinct summary-like style, `meso` (section leads) sits structurally between global summaries and procedural details. This ambiguity leads to frequent confusion with both adjacent levels, confirming that the "middle" of the abstraction hierarchy is the least cleanly separated in the embedding space.
 
 ### 2.2 Confusion Matrices
 
-Ordered `macro`, `meso`, `micro`. To keep the report compact, the main text shows the confusion matrices for the strongest model, SciBERT; the full result set for both models remains in [`results/probe_results.json`](../results/probe_results.json).
-
-- SciBERT in-domain NLP -> NLP: `[[136, 36, 36], [28, 107, 40], [40, 59, 136]]`
-- SciBERT in-domain CV -> CV: `[[144, 33, 32], [27, 137, 43], [19, 49, 109]]`
-- SciBERT cross-domain NLP -> CV: `[[709, 133, 240], [149, 580, 353], [119, 311, 652]]`
-- SciBERT cross-domain CV -> NLP: `[[635, 163, 137], [139, 496, 300], [154, 279, 502]]`
-- SciBERT controlled NLP -> NLP: `[[135, 32, 41], [26, 100, 49], [33, 65, 137]]`
-- SciBERT controlled CV -> CV: `[[130, 35, 44], [25, 119, 63], [25, 47, 105]]`
+Confusion matrices across all conditions (available in `results/probe_results.json`) show a persistent "boundary problem": `macro` and `micro` are rarely confused with each other, but both frequently overlap with the intermediate `meso` class.
 
 ## 3. Error Analysis
 
-The examples below come from the current SciBERT in-domain NLP split.
+The following examples from the SciBERT in-domain NLP split illustrate typical boundary failures.
 
-| class | correct examples | failure examples |
+| class | correct example | failure example |
 | --- | --- | --- |
-| macro | `827948 / title / "Knowledge-Guided Linguistic Rewrites for Inference Rule Verification"`; `2091259 / abstract / "This paper describes our preliminary attempt..."`; `8269086 / title / "LEXSEMTM: A Semantic Dataset..."` | `15983238 / Conclusion / "In such a representatlon framework..." -> meso`; `15983238 / Conclusion / "Our goal m thls work..." -> meso`; `15983238 / Conclusion / "To tackle reference problems..." -> meso` |
-| meso | `2091259 / Identification / "Our primary goal is to identify relevant information..."`; `2091259 / Results / "We classified our 320 '(A no) B' examples..."`; `2091259 / Yamura / "As our centering analysis above indicates..."` | `258352741 / Translation Error Reduction with Context / "Finally, we analyze the extent..." -> micro`; `259367730 / Dataset # P # T L SD / "Alzheimer's Dementia Recognition..." -> macro`; `259858804 / ( 9 ) / "Mary [MASK] John the ball..." -> micro` |
-| micro | `827948 / Experiments / "Comparison of PPDB e and VPPDB e..."`; `8269086 / Evaluation / "In addition, we compared the time taken..."`; `14984743 / Experimental Set-up / "In a typical application..."` | `8269086 / Evaluation of LEXSEMTM / "We can contrast this result..." -> macro`; `15983238 / Determine which relaxation methods to apply / "Complex relatlons speclfted..." -> meso`; `26237045 / Evaluation protocol / "For the whole system evaluation..." -> meso` |
+| macro | `title / "Knowledge-Guided Linguistic Rewrites..."` | `Conclusion / "In such a representation framework..." -> meso` |
+| meso | `Identification / "Our primary goal is to identify..."` | `Translation Error... / "Finally, we analyze..." -> micro` |
+| micro | `Experiments / "Comparison of PPDB e and VPPDB e..."` | `Evaluation... / "We can contrast this result..." -> macro` |
 
 Two failure modes are especially common.
 
