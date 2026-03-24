@@ -109,9 +109,8 @@ Run the entrypoints as direct scripts, for example `python src/dataset.py`.
 ## Notes
 
 - The probe uses a linear classifier only.
-- The controlled experiment uses a fixed-length token window to reduce the
-  length confound.
-- `src/dataset.py` and `src/embed.py` reads its generation settings from `config.toml`.
-- `src/probe.py` reads its probe settings from `config.toml`; the CLI
-  is limited to the assignment-facing flags `--train`, `--eval`, and
-  `--condition`.
+- The controlled experiment uses a fixed-length token window to reduce length-related confounding.
+- `src/dataset.py` and `src/embed.py` read their generation settings from `config.toml`.
+- `src/probe.py` reads its probe settings from `config.toml`; the CLI is limited to the assignment-facing flags `--train`, `--eval`, and `--condition`.
+- For the `in_domain` condition, there are 4 runs total (2 domains × 2 embedding models).
+- For the `all` condition, there are 12 runs total: (2 in-domain + 2 cross-domain + 2 controlled runs) × 2 embedding models.
