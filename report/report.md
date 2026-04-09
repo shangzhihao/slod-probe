@@ -65,7 +65,29 @@ Per-class analysis reveals that `meso` is consistently the hardest category to d
 
 ### 2.2 Confusion Matrices
 
-Confusion matrices across all conditions (available in `results/probe_results.json`) show a persistent "boundary problem": `macro` and `micro` are rarely confused with each other, but both frequently overlap with the intermediate `meso` class.
+Table entries below are row-wise confusion matrices with rows as gold labels and columns as predicted labels in the order `[macro, meso, micro]`. 
+
+#### SciBERT
+
+| NLP -> NLP                                                   | CV -> CV                                                     | NLP -> CV                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| $\begin{bmatrix}136 & 36 & 36\\ 28 & 107 & 40 \\ 40 & 59 & 136\end{bmatrix}$ | $\begin{bmatrix}144 & 33 & 32\\ 27 & 137 & 43 \\ 19 & 49 & 109\end{bmatrix}$ | $\begin{bmatrix}709 & 133 & 240\\ 149 & 580 & 353 \\ 119 & 311 & 652\end{bmatrix}$ |
+
+| CV -> NLP                                                         | NLP -> NLP (C)                                                 | CV -> CV (C)                                                   |
+| ----------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------- |
+| $\begin{bmatrix}635 & 163 & 137\\ 139 & 496 & 300 \\ 154 & 279 & 502\end{bmatrix}$ | $\begin{bmatrix}135 & 32 & 41\\ 26 & 100 & 49 \\ 33 & 65 & 137\end{bmatrix}$ | $\begin{bmatrix}130 & 35 & 44\\ 25 & 119 & 63 \\ 25 & 47 & 105\end{bmatrix}$ |
+
+#### BGE-small
+
+| NLP -> NLP                                                   | CV -> CV                                                     | NLP -> CV                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| $\begin{bmatrix}132 & 43 & 33\\ 33 & 99 & 43 \\ 35 & 66 & 134\end{bmatrix}$ | $\begin{bmatrix}138 & 36 & 35\\ 37 & 116 & 54 \\ 34 & 50 & 93\end{bmatrix}$ | $\begin{bmatrix}631 & 176 & 275\\ 230 & 537 & 315 \\ 174 & 337 & 571\end{bmatrix}$ |
+
+| CV -> NLP                                                         | NLP -> NLP (C)                                                 | CV -> CV (C)                                                   |
+| ----------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------- |
+| $\begin{bmatrix}589 & 198 & 148\\ 196 & 511 & 228 \\ 197 & 274 & 464\end{bmatrix}$ | $\begin{bmatrix}108 & 52 & 48\\ 37 & 90 & 48 \\ 41 & 61 & 133\end{bmatrix}$ | $\begin{bmatrix}116 & 48 & 45\\ 45 & 113 & 49 \\ 32 & 54 & 91\end{bmatrix}$ |
+
+Two concrete takeaways stand out. First, the diagonal remains strongest for `macro` and `micro`, especially with SciBERT, which is consistent with the stronger overall macro F1 results. Second, `meso` is the most unstable row in nearly every matrix. For example, in SciBERT CV -> NLP transfer, gold `meso` spans split as `[139, 496, 300]`, and in BGE-small NLP -> CV transfer, they split as `[230, 537, 315]`. That is strong evidence that the probe struggles most with the middle of the hierarchy rather than with the extremes.
 
 ## 3. Error Analysis
 
