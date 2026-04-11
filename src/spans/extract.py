@@ -6,14 +6,16 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
+from shared.schema import DomainInferenceSettings, SectionRuleSettings, SpanRecord
+from shared.utils import load_settings, split_first_sentence
 from spans.domain import paper_domain_from_metadata
 from spans.parse import (
     dedupe_spans,
     parse_annotation_list,
     section_for_offset,
     sorted_spans,
-    span_text,
     span_start,
+    span_text,
 )
 from spans.sections import (
     clean_section_name,
@@ -24,8 +26,6 @@ from spans.sections import (
     normalize_whitespace,
     token_count,
 )
-from shared.schema import DomainInferenceSettings, SectionRuleSettings, SpanRecord
-from shared.utils import load_settings, split_first_sentence
 
 TARGET_DOMAINS = ("nlp", "cv")
 
@@ -268,6 +268,8 @@ def _collect_body_spans(
     # and intro rules stay deterministic within each section.
     section_paragraph_counts: dict[tuple[int, int, str], int] = defaultdict(int)
     spans: list[SpanRecord] = []
+    if section_rules is None:
+        section_rules = load_settings().dataset.section_rules
 
     for paragraph in prepared.paragraph_spans:
         paragraph_text = normalize_whitespace(span_text(prepared.text, paragraph))
